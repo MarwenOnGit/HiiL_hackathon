@@ -29,3 +29,6 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+
+# Local git worktrees for isolated feature work (superpowers:using-git-worktrees)
+.worktrees/
