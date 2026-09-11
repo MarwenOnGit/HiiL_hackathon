@@ -10,12 +10,17 @@ function el(id) {
 }
 
 async function callApi(path, options) {
-  const res = await fetch(API + path, {
-    headers: { "Content-Type": "application/json" },
-    ...options
-  });
+  let res;
+  try {
+    res = await fetch(API + path, {
+      headers: { "Content-Type": "application/json" },
+      ...options
+    });
+  } catch (err) {
+    return { ok: false, networkError: true, body: {} };
+  }
   const body = await res.json();
-  return { ok: res.ok, body };
+  return { ok: res.ok, networkError: false, body };
 }
 
 function renderInvalid(message) {
@@ -66,7 +71,7 @@ async function onAccept() {
   errorEl.textContent = "";
   button.disabled = true;
 
-  const { ok, body } = await callApi(`/confirm/${token}`, {
+  const { ok, body, networkError } = await callApi(`/confirm/${token}`, {
     method: "POST",
     body: JSON.stringify({ otp_code: code })
   });
@@ -77,7 +82,9 @@ async function onAccept() {
   }
 
   button.disabled = false;
-  if (body.status === "wrong_code") {
+  if (networkError) {
+    errorEl.textContent = "Couldn't reach the server — please try again.";
+  } else if (body.status === "wrong_code") {
     errorEl.textContent = `That code doesn't match. ${body.attemptsRemaining} attempt(s) left.`;
   } else if (body.status === "expired") {
     renderExpired();
@@ -93,8 +100,11 @@ async function init() {
     renderInvalid("No confirmation token was provided.");
     return;
   }
-  const { ok, body } = await callApi(`/confirm/${token}`);
+  const { ok, body, networkError } = await callApi(`/confirm/${token}`);
   if (!ok) {
+    if (networkError) {
+      return renderInvalid("Couldn't reach the server — check your connection and reload this page.");
+    }
     if (body.status === "expired") return renderExpired();
     if (body.status === "already_confirmed") return renderAlreadyConfirmed();
     return renderInvalid("This link doesn't match a pending confirmation.");
