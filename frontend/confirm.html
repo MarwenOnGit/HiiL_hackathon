@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Confirm agreement — Insaf</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="styles.css">
+<script>
+  (function () {
+    var saved = localStorage.getItem("insaf-theme");
+    document.documentElement.dataset.theme = saved === "dark" ? "dark" : "light";
+  })();
+</script>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-text">
+          <strong>Insaf</strong>
+          <span>confirm an agreement</span>
+        </div>
+      </div>
+    </header>
+    <main class="content">
+      <section class="panel" id="confirm-panel">
+        <h1 id="confirm-title">Loading…</h1>
+        <p class="lede" id="confirm-lede"></p>
+        <div class="card" id="confirm-card" hidden></div>
+      </section>
+    </main>
+  </div>
+  <script src="confirm.js"></script>
+</body>
+</html>
