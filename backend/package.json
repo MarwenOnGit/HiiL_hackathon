@@ -1,0 +1,19 @@
+{
+  "name": "msme-backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "description": "Backend pipeline: ingestion, contract generation (template-based, no model), chain anchoring, dashboard API. See ../ARCHITECTURE.md.",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "ethers": "^6.13.0",
+    "express": "^4.19.2",
+    "uuid": "^9.0.1"
+  }
+}
