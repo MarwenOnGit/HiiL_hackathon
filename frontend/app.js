@@ -173,54 +173,28 @@ function renderContract(contract) {
 
 document.getElementById("btn-to-anchor").addEventListener("click", async () => {
   showStep("anchor");
-  setInsaf("Anchoring this on-chain…", "working");
+  setInsaf("Generating a confirmation link…", "working");
   try {
-    const { onchain, insaf } = await api(`/contracts/${state.contract.contract_id}/anchor`, { method: "POST" });
-    state.onchain = onchain;
-    renderAnchor(onchain);
+    const { confirmation, insaf } = await api(`/contracts/${state.contract.contract_id}/anchor`, { method: "POST" });
+    state.confirmation = confirmation;
+    renderConfirmation(confirmation);
     setInsaf(insaf, "success");
     document.querySelector('.step[data-step="contract"]').classList.add("done");
-    document.getElementById("btn-sign-a").disabled = false;
-    document.getElementById("btn-sign-b").disabled = false;
   } catch (e) {
-    setInsaf("Anchoring failed — " + e.message, "error");
+    setInsaf("Couldn't generate a confirmation link — " + e.message, "error");
   }
 });
 
-// ---------- STEP 4: anchor & sign ----------
-function renderAnchor(onchain) {
-  const statusClass = onchain.executed ? "status-executed" : "status-pending";
-  const statusText = onchain.executed ? "executed" : "pending";
+// ---------- STEP 4: confirmation link ----------
+function renderConfirmation(confirmation) {
   document.getElementById("anchor-card").innerHTML = `
-    <div class="field-row"><span class="field-label">Agreement ID (on-chain)</span><span class="field-value">#${onchain.agreement_onchain_id}</span></div>
-    <div class="field-row"><span class="field-label">Consent tier</span><span class="field-value">${onchain.consent_tier}</span></div>
-    <div class="field-row"><span class="field-label">Chain mode</span><span class="field-value">${onchain.chain_mode}</span></div>
-    <div class="field-row"><span class="field-label">Tx hash</span><span class="field-value"><span class="hash-tag">${onchain.tx_hash}</span></span></div>
-    <div class="field-row"><span class="field-label">Status</span><span class="field-value"><span class="status-pill ${statusClass}">${statusText}</span></span></div>
+    <div class="field-row"><span class="field-label">Confirmation link</span><span class="field-value"><span class="hash-tag">${confirmation.confirm_url}</span></span></div>
+    <div class="field-row"><span class="field-label">Code</span><span class="field-value">${confirmation.otp_code}</span></div>
+    <div class="field-row"><span class="field-label">Expires</span><span class="field-value">${new Date(confirmation.expires_at).toLocaleString()}</span></div>
+    <h3 style="margin:16px 0 6px;font-size:13px;color:var(--ink-muted)">What happens next</h3>
+    <p class="evidence-text">Send this link and code to your counterparty yourself — WhatsApp, email, whatever you already use with them. Once they open the link and accept, this agreement is anchored and signed automatically. Check the Dashboard to see it go live.</p>
   `;
 }
-
-async function sign(role, btnId) {
-  setInsaf("Recording that confirmation…", "working");
-  try {
-    const { onchain, insaf } = await api(`/contracts/${state.contract.contract_id}/sign`, {
-      method: "POST",
-      body: JSON.stringify({ role })
-    });
-    state.onchain = onchain;
-    renderAnchor(onchain);
-    setInsaf(insaf, onchain.executed ? "success" : "idle");
-    document.getElementById(btnId).disabled = true;
-    if (onchain.executed) {
-      document.getElementById("btn-sign-a").disabled = true;
-      document.getElementById("btn-sign-b").disabled = true;
-    }
-  } catch (e) {
-    setInsaf("Couldn't record that confirmation — " + e.message, "error");
-  }
-}
-document.getElementById("btn-sign-a").addEventListener("click", () => sign("partyA", "btn-sign-a"));
-document.getElementById("btn-sign-b").addEventListener("click", () => sign("partyB", "btn-sign-b"));
 
 // ---------- STEP 5: dashboard ----------
 async function loadDashboard() {
