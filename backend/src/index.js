@@ -7,6 +7,7 @@ const { createChainService } = require("./services/chainService");
 const relationshipsRouter = require("./routes/relationships");
 const contractsRouter = require("./routes/contracts");
 const dashboardRouter = require("./routes/dashboard");
+const confirmRouter = require("./routes/confirm");
 const insaf = require("./services/insaf");
 
 const app = express();
@@ -26,6 +27,7 @@ app.get("/api/health", (req, res) => {
 app.use("/api/relationships", relationshipsRouter);
 app.use("/api/contracts", contractsRouter);
 app.use("/api/dashboard", dashboardRouter);
+app.use("/api/confirm", confirmRouter);
 
 // Serve the static frontend (see ../../frontend) so the whole demo runs from
 // one process: `node src/index.js`, then open http://localhost:4000
