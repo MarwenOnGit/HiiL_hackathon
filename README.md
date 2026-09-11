@@ -17,6 +17,35 @@ could actually be installed to run it. Run it on your own machine first and
 tell me what breaks — I'll fix it fast. This is the one honest caveat on an
 otherwise complete v1.
 
+## Quick start (new clone)
+
+For a teammate pulling this down for the first time:
+
+```bash
+git clone https://github.com/MarwenOnGit/HiiL_hackathon.git
+cd HiiL_hackathon
+./start.sh          # real local chain + contract deploy + backend
+# or, to skip the blockchain entirely:
+./start.sh mock
+```
+
+That's it — `start.sh` runs `npm install` in `contracts/` and `backend/`
+automatically (only if `node_modules` is missing), creates `backend/.env`
+from `backend/.env.example` on first run, deploys the contract, and starts
+the backend at `http://localhost:4000` (which also serves the frontend).
+Requires Node.js 18+ and npm on `PATH`; nothing else needs to be installed
+by hand.
+
+**What's intentionally not in git** (see `.gitignore`): `node_modules/` in
+both `backend/` and `contracts/` (run `npm install`, don't commit it),
+`backend/.env` (generated from `.env.example` — holds only well-known
+public Hardhat test keys, never real secrets), `contracts/artifacts/` and
+`contracts/cache/` (Hardhat build output), and
+`backend/src/chain/deployment.json` (the deployed contract address —
+regenerated per machine every time you run a local chain, so it's never
+shared between teammates). If you pull changes and something acts stale,
+re-run `./start.sh` — it regenerates all of the above.
+
 ## What's real vs. what's stubbed
 
 | Piece | Status |
