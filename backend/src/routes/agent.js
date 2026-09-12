@@ -7,6 +7,7 @@
 
 const express = require("express");
 const multer = require("multer");
+const registry = require("../services/contractsRegistry");
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 * 1024 * 1024 } });
@@ -77,6 +78,12 @@ router.post("/harden", upload.single("file"), async (req, res) => {
     const { ok, status, body } = await callAgent("/harden", {
       method: "POST", body: form, timeout: TIMEOUTS.harden
     });
+    if (ok && req.auth && req.auth.kind === "msme") {
+      // v3 ownership: the signed-in MSME user owns the contract that the
+      // agent store now keeps for them.
+      require("../db").saveContractOwner(body.contract_id, req.auth.user.user_id, "hardened");
+      registry.clearAgentListCache();
+    }
     res.status(ok ? 200 : status).json(body);
   } catch (err) {
     unavailable(res, err);
@@ -92,6 +99,8 @@ const FORWARD = [
   { method: "get", path: "/contracts/:id", to: (p) => `/contracts/${p.id}` },
   { method: "get", path: "/contracts/:id/history", to: (p) => `/contracts/${p.id}/history` },
   { method: "get", path: "/contracts/:id/verify", to: (p) => `/contracts/${p.id}/verify` },
+  { method: "get", path: "/contracts", to: () => "/contracts" },
+  { method: "post", path: "/ask", to: () => "/ask" },
   { method: "post", path: "/disputes", to: () => "/disputes" },
   { method: "post", path: "/admin/reset", to: () => "/admin/reset" }
 ];

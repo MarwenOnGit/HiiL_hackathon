@@ -17,11 +17,16 @@ HARDHAT_PID=""
 STARTED_HARDHAT=0
 AGENT_PID=""
 AGENT_PORT="${AGENT_PORT:-5001}"
+WEB_PID=""
 
 log() { printf '\033[1;34m[start.sh]\033[0m %s\n' "$1"; }
 die() { printf '\033[1;31m[start.sh]\033[0m %s\n' "$1" >&2; exit 1; }
 
 cleanup() {
+  if [[ -n "$WEB_PID" ]] && kill -0 "$WEB_PID" 2>/dev/null; then
+    log "Stopping dashboard (pid $WEB_PID)…"
+    kill "$WEB_PID" 2>/dev/null || true
+  fi
   if [[ -n "$AGENT_PID" ]] && kill -0 "$AGENT_PID" 2>/dev/null; then
     log "Stopping agent service (pid $AGENT_PID)…"
     kill "$AGENT_PID" 2>/dev/null || true
@@ -108,6 +113,35 @@ fi
 
 install_if_needed "$BACKEND_DIR"
 
+# --- v3 dashboard (Next.js) --------------------------------------------------
+# The one-and-only login surface on :3000. Rewrites /api/* to the backend, so
+# invite links and OAuth callbacks can point at this origin regardless of where
+# the legacy app lives. PUBLIC_BASE_URL above lets the backend build the right
+# URLs; here we just make sure it matches the Next port.
+WEB_DIR="$ROOT_DIR/web"
+WEB_PUBLIC_URL="http://localhost:3000"
+set_env_var PUBLIC_BASE_URL "$WEB_PUBLIC_URL"
+if [[ -d "$WEB_DIR" ]]; then
+  install_if_needed "$WEB_DIR"
+  if [[ -d "$WEB_DIR/node_modules/next" ]] && command -v curl >/dev/null 2>&1 \
+     && curl -s -o /dev/null -m 2 "$WEB_PUBLIC_URL"; then
+    log "A dashboard is already answering on ${WEB_PUBLIC_URL} — reusing it."
+  else
+    log "Starting dashboard on ${WEB_PUBLIC_URL}…"
+    (cd "$WEB_DIR" && exec npm run dev > "$ROOT_DIR/web-dashboard.log" 2>&1) &
+    WEB_PID=$!
+    for _ in $(seq 1 60); do
+      curl -s -o /dev/null -m 1 "$WEB_PUBLIC_URL" && break
+      sleep 1
+    done
+    if curl -s -o /dev/null -m 1 "$WEB_PUBLIC_URL"; then
+      log "Dashboard up on ${WEB_PUBLIC_URL}."
+    else
+      log "Dashboard didn't come up after ~60s — check web-dashboard.log."
+    fi
+  fi
+fi
+
 # --- Agent service (v3 analysis layer, ARCHITECTURE.md Section 3) -------------
 # The backend degrades gracefully without it: anchoring and confirmation keep
 # working and the UI says analysis is unavailable. So a failure to start here is
@@ -138,6 +172,7 @@ if [[ -d "$AGENT_DIR" ]] && command -v python3 >/dev/null 2>&1; then
   fi
 fi
 
-log "Starting backend on http://localhost:4000 (serves the frontend too)…"
+log "Starting backend on http://localhost:4000 (serves the legacy frontend too)…"
+log "Dashboard on http://localhost:3000 — sign in there."
 log "Press Ctrl+C to stop everything."
 (cd "$BACKEND_DIR" && exec npm start)

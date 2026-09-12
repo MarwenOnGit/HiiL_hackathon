@@ -13,8 +13,16 @@ function confirmedTokenFor(contractId) {
   return token;
 }
 
-test("owner can always post, with no token", () => {
-  assert.equal(canPost("owner", "contract_a1", undefined), true);
+test("owner can post with no token when they own the contract", () => {
+  assert.equal(canPost("owner", "contract_a1", undefined, true), true);
+});
+
+test("owner cannot post when the contract belongs to someone else", () => {
+  assert.equal(canPost("owner", "contract_a1", undefined, false), false);
+});
+
+test("owner cannot post on an owned contract without an owner session", () => {
+  assert.equal(canPost("owner", "contract_a1", undefined, undefined), false);
 });
 
 test("counterparty can post with a used token matching the contract", () => {

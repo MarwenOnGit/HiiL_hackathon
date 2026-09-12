@@ -8,14 +8,22 @@ const confirmationTokens = require("./confirmationTokens");
 
 const MAX_BODY_LENGTH = 4000;
 
-// The owner is not authenticated anywhere in this prototype (Decision 3):
-// anyone who can reach the Dashboard can post as the owner, exactly like
-// every other route today. The counterparty must present the confirmation
-// token that actually confirmed THIS contract (Decision 2) — a token that
-// is still pending, or that belongs to a different contract, is not a key
-// to this thread.
-function canPost(sender, contractId, token) {
-  if (sender === "owner") return true;
+// Threads have two roles, and each one's key is different:
+//
+//  owner        — must BE the MSME owner of this contract. The v3 UI
+//                 authenticates the owner via Google session, so the routing
+//                 layer computes `isOwner` (authenticated owner of this
+//                 contract, OR a legacy contract that no user owns yet, which
+//                 preserves the pre-auth v1 behaviour for old demo data).
+//  counterparty — must present the confirmation token that actually confirmed
+//                 THIS contract (Decision 2) — a token that is still pending,
+//                 or that belongs to a different contract, is not a key to
+//                 this thread.
+//
+// A confirmed token stays a durable key past its TTL (bold comment in
+// confirmationTokens.getStatus) because it doubles as credential for access.
+function canPost(sender, contractId, token, isOwner) {
+  if (sender === "owner") return Boolean(isOwner);
   if (sender !== "counterparty") return false;
   if (!token) return false;
   if (confirmationTokens.getStatus(token) !== "already_confirmed") return false;
