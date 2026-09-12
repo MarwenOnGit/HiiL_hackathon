@@ -40,6 +40,15 @@ router.post("/:token", async (req, res) => {
   const relationship = db.getRelationship(contract.relationship_id);
   const chain = req.app.locals.chainService;
 
+  // This contract was already anchored on-chain via a different token
+  // (e.g. the owner clicked "Anchor" twice before this fix, or forwarded a
+  // stale link). This token's code was correct, but there is nothing left
+  // for it to do — never call the chain a second time for the same contract.
+  if (db.getOnchainRecord(contract.contract_id)) {
+    confirmationTokens.markUsed(token);
+    return res.status(409).json({ status: "already_confirmed" });
+  }
+
   const evidence = {
     token,
     contract_id: contract.contract_id,

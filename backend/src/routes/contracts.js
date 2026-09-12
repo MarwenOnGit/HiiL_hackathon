@@ -30,7 +30,8 @@ router.post("/:id/anchor", (req, res) => {
     return res.status(409).json({ error: "already anchored", onchain: db.getOnchainRecord(contract.contract_id) });
   }
 
-  const { token, otp_code, expires_at } = confirmationTokens.createConfirmation(contract.contract_id);
+  const existing = confirmationTokens.findActiveByContract(contract.contract_id);
+  const { token, otp_code, expires_at } = existing || confirmationTokens.createConfirmation(contract.contract_id);
   const baseUrl = process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get("host")}`;
   const confirm_url = `${baseUrl}/confirm.html?token=${token}`;
 

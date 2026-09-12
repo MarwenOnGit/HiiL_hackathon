@@ -50,10 +50,10 @@ test("burns the token after MAX_ATTEMPTS wrong codes", () => {
       // expected on every wrong attempt
     }
   }
-  assert.equal(getStatus(token), "already_confirmed");
+  assert.equal(getStatus(token), "expired");
   assert.throws(
     () => checkCode(token, otp_code),
-    (err) => err.code === "already_confirmed"
+    (err) => err.code === "expired"
   );
 });
 

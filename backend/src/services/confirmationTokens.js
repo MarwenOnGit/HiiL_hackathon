@@ -31,20 +31,36 @@ function createConfirmation(contractId, opts = {}) {
   const ttlMs = opts.ttlMs === undefined ? DEFAULT_TTL_MS : opts.ttlMs;
   const token = generateToken();
   const record = {
+    token,
     contract_id: contractId,
     otp_code: generateCode(),
     expires_at: Date.now() + ttlMs,
     used: false,
+    burned: false,
     attempts: 0
   };
   db.saveConfirmation(token, record);
   return { token, otp_code: record.otp_code, expires_at: record.expires_at };
 }
 
+// Finds a still-live (not used, not burned, not expired) confirmation
+// already issued for this contract, so /anchor can hand the counterparty
+// the same link/code again instead of minting a second valid token for the
+// same contract (see 2026-09-12 final-review Finding 1).
+function findActiveByContract(contractId) {
+  const records = db.listConfirmations();
+  const record = records.find(
+    (r) => r.contract_id === contractId && !r.used && !r.burned && Date.now() <= r.expires_at
+  );
+  if (!record) return null;
+  return { token: record.token, otp_code: record.otp_code, expires_at: record.expires_at };
+}
+
 function getStatus(token) {
   const record = db.getConfirmation(token);
   if (!record) return "invalid";
   if (record.used) return "already_confirmed";
+  if (record.burned) return "expired";
   if (Date.now() > record.expires_at) return "expired";
   return "pending";
 }
@@ -62,7 +78,7 @@ function checkCode(token, submittedCode) {
   if (record.otp_code !== String(submittedCode)) {
     record.attempts += 1;
     if (record.attempts >= MAX_ATTEMPTS) {
-      record.used = true; // burn the token — no more guesses
+      record.burned = true; // burn the token — no more guesses; reports as "expired", not "already_confirmed"
     }
     db.saveConfirmation(token, record);
     throw new ConfirmationError("wrong_code", {
@@ -82,6 +98,7 @@ function markUsed(token) {
 
 module.exports = {
   createConfirmation,
+  findActiveByContract,
   getStatus,
   checkCode,
   markUsed,

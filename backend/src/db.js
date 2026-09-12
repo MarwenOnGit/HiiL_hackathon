@@ -48,6 +48,10 @@ function getConfirmation(token) {
   return pendingConfirmations.get(token) || null;
 }
 
+function listConfirmations() {
+  return Array.from(pendingConfirmations.values());
+}
+
 function dashboardRows() {
   return listContracts().map((c) => {
     const onchain = getOnchainRecord(c.contract_id);
@@ -74,5 +78,6 @@ module.exports = {
   getOnchainRecord,
   saveConfirmation,
   getConfirmation,
+  listConfirmations,
   dashboardRows
 };
