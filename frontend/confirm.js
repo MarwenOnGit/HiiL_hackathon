@@ -35,16 +35,32 @@ function renderExpired() {
   el("confirm-card").hidden = true;
 }
 
-function renderAlreadyConfirmed() {
+function renderAlreadyConfirmed(contractId) {
   el("confirm-title").textContent = "Already confirmed";
-  el("confirm-lede").textContent = "This agreement was already confirmed. You can close this page.";
-  el("confirm-card").hidden = true;
+  const card = el("confirm-card");
+  if (!contractId) {
+    el("confirm-lede").textContent = "This agreement was already confirmed. You can close this page.";
+    card.hidden = true;
+    return;
+  }
+  el("confirm-lede").textContent = "This agreement is confirmed. You can still use this link to discuss it with the other party.";
+  card.hidden = false;
+  const href = `thread.html?contract_id=${encodeURIComponent(contractId)}&role=counterparty&token=${encodeURIComponent(token)}`;
+  card.innerHTML = `<a class="primary-btn" id="open-thread-btn" href="${href}">Open the discussion</a>`;
 }
 
-function renderSuccess() {
+function renderSuccess(contractId) {
   el("confirm-title").textContent = "Confirmed";
-  el("confirm-lede").textContent = "Thanks — this agreement is now anchored and active. You can close this page.";
-  el("confirm-card").hidden = true;
+  const card = el("confirm-card");
+  if (!contractId) {
+    el("confirm-lede").textContent = "Thanks — this agreement is now anchored and active. You can close this page.";
+    card.hidden = true;
+    return;
+  }
+  el("confirm-lede").textContent = "Thanks — this agreement is now anchored and active. You can use this same link any time to discuss it.";
+  card.hidden = false;
+  const href = `thread.html?contract_id=${encodeURIComponent(contractId)}&role=counterparty&token=${encodeURIComponent(token)}`;
+  card.innerHTML = `<a class="primary-btn" id="open-thread-btn" href="${href}">Open the discussion</a>`;
 }
 
 function renderPending(contractText) {
@@ -77,7 +93,7 @@ async function onAccept() {
   });
 
   if (ok) {
-    renderSuccess();
+    renderSuccess(body.contract_id);
     return;
   }
 
@@ -89,7 +105,7 @@ async function onAccept() {
   } else if (body.status === "expired") {
     renderExpired();
   } else if (body.status === "already_confirmed") {
-    renderAlreadyConfirmed();
+    renderAlreadyConfirmed(body.contract_id);
   } else {
     errorEl.textContent = "Something went wrong confirming this — please try again.";
   }
@@ -106,7 +122,7 @@ async function init() {
       return renderInvalid("Couldn't reach the server — check your connection and reload this page.");
     }
     if (body.status === "expired") return renderExpired();
-    if (body.status === "already_confirmed") return renderAlreadyConfirmed();
+    if (body.status === "already_confirmed") return renderAlreadyConfirmed(body.contract_id);
     return renderInvalid("This link doesn't match a pending confirmation.");
   }
   renderPending(body.contract_text);

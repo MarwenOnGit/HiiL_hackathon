@@ -197,15 +197,38 @@ function renderConfirmation(confirmation) {
 }
 
 // ---------- STEP 5: dashboard ----------
+// The badge is driven entirely from this browser: thread.js stamps a
+// last-seen time when the owner opens a thread, and we ask the server how
+// many messages arrived after it. No server-side read state exists,
+// because there is no authenticated owner to attach it to.
+function threadLastSeen(contractId) {
+  try {
+    return localStorage.getItem(`insaf-thread-seen-${contractId}`);
+  } catch (e) {
+    return null;
+  }
+}
+
+async function fetchUnreadCount(contractId) {
+  const since = threadLastSeen(contractId);
+  const qs = since ? `?since=${encodeURIComponent(since)}` : "";
+  try {
+    const { count } = await api(`/threads/${encodeURIComponent(contractId)}/unread-count${qs}`);
+    return count;
+  } catch (e) {
+    return 0;
+  }
+}
+
 async function loadDashboard() {
   const tbody = document.querySelector("#dash-table tbody");
   tbody.innerHTML = Array.from({ length: 3 })
-    .map(() => `<tr><td colspan="5"><div class="skeleton-bar"></div></td></tr>`)
+    .map(() => `<tr><td colspan="6"><div class="skeleton-bar"></div></td></tr>`)
     .join("");
   try {
     const { rows } = await api("/dashboard");
     if (!rows.length) {
-      tbody.innerHTML = `<tr class="dash-empty"><td colspan="5">Nothing anchored yet — walk through steps 1-4 first.</td></tr>`;
+      tbody.innerHTML = `<tr class="dash-empty"><td colspan="6">Nothing anchored yet — walk through steps 1-4 first.</td></tr>`;
       return;
     }
     tbody.innerHTML = rows
@@ -213,17 +236,31 @@ async function loadDashboard() {
         const executed = r.onchain && r.onchain.executed;
         const statusClass = executed ? "status-executed" : "status-pending";
         const statusText = r.onchain ? (executed ? "executed" : "pending") : "not anchored";
+        const discussion = executed
+          ? `<a class="thread-link" href="thread.html?contract_id=${encodeURIComponent(r.contract_id)}&role=owner">Open discussion</a><span class="thread-badge" id="badge-${r.contract_id}" hidden></span>`
+          : "—";
         return `<tr>
           <td>${r.contract_id}</td>
           <td>${r.msme_owner || "—"}</td>
           <td>${r.counterparty || "—"}</td>
           <td>${r.consent_tier}</td>
           <td><span class="status-pill ${statusClass}">${statusText}</span></td>
+          <td>${discussion}</td>
         </tr>`;
       })
       .join("");
+    // Badges load after the table so a slow thread lookup never delays it.
+    for (const r of rows) {
+      if (!(r.onchain && r.onchain.executed)) continue;
+      fetchUnreadCount(r.contract_id).then((count) => {
+        const badge = document.getElementById(`badge-${r.contract_id}`);
+        if (!badge || !count) return;
+        badge.textContent = count;
+        badge.hidden = false;
+      });
+    }
   } catch (e) {
-    tbody.innerHTML = `<tr class="dash-error"><td colspan="5">Couldn't load the dashboard.</td></tr>`;
+    tbody.innerHTML = `<tr class="dash-error"><td colspan="6">Couldn't load the dashboard.</td></tr>`;
   }
 }
 
