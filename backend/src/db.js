@@ -6,6 +6,7 @@
 const relationships = new Map();
 const contracts = new Map();
 const agreementsOnchain = new Map(); // keyed by contract_id
+const pendingConfirmations = new Map(); // keyed by confirmation token
 
 function saveRelationship(rel) {
   relationships.set(rel.relationship_id, rel);
@@ -38,6 +39,19 @@ function getOnchainRecord(contractId) {
   return agreementsOnchain.get(contractId) || null;
 }
 
+function saveConfirmation(token, record) {
+  pendingConfirmations.set(token, record);
+  return record;
+}
+
+function getConfirmation(token) {
+  return pendingConfirmations.get(token) || null;
+}
+
+function listConfirmations() {
+  return Array.from(pendingConfirmations.values());
+}
+
 function dashboardRows() {
   return listContracts().map((c) => {
     const onchain = getOnchainRecord(c.contract_id);
@@ -47,7 +61,7 @@ function dashboardRows() {
       relationship_id: c.relationship_id,
       msme_owner: rel ? rel.parties.msme_owner.name : null,
       counterparty: rel ? rel.parties.counterparty.name : null,
-      consent_tier: c.consent_tier_recommended,
+      consent_tier: onchain ? onchain.consent_tier : c.consent_tier_recommended,
       generated_at: c.generated_at,
       onchain: onchain || null
     };
@@ -62,5 +76,8 @@ module.exports = {
   listContracts,
   saveOnchainRecord,
   getOnchainRecord,
+  saveConfirmation,
+  getConfirmation,
+  listConfirmations,
   dashboardRows
 };

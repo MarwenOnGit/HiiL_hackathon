@@ -26,6 +26,10 @@ function onAnchored(record) {
   return `Anchored as agreement #${record.agreementId}. Anyone can now verify this exact text was what both sides agreed to.`;
 }
 
+function onConfirmationCreated() {
+  return "Link's ready. Send it — and the code — to your counterparty yourself. The moment they accept, this gets anchored and signed in one step, no extra confirmation needed from you.";
+}
+
 function onSigned(role, executed) {
   if (executed) return "Fully confirmed on both sides. This agreement is active.";
   const who = role === "partyA" ? "the MSME owner's" : "the counterparty's";
@@ -36,4 +40,4 @@ function idle() {
   return "Connect a conversation with a business contact and I'll take it from there.";
 }
 
-module.exports = { onExtraction, onGenerated, onAnchoring, onAnchored, onSigned, idle };
+module.exports = { onExtraction, onGenerated, onAnchoring, onAnchored, onConfirmationCreated, onSigned, idle };

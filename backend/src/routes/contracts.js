@@ -2,6 +2,7 @@ const express = require("express");
 const db = require("../db");
 const { generateContract } = require("../services/contractGenerator");
 const insaf = require("../services/insaf");
+const confirmationTokens = require("../services/confirmationTokens");
 
 const router = express.Router();
 
@@ -22,42 +23,22 @@ router.get("/:id", (req, res) => {
   res.json({ contract, onchain });
 });
 
-router.post("/:id/anchor", async (req, res) => {
+router.post("/:id/anchor", (req, res) => {
   const contract = db.getContract(req.params.id);
   if (!contract) return res.status(404).json({ error: "contract not found" });
   if (db.getOnchainRecord(contract.contract_id)) {
     return res.status(409).json({ error: "already anchored", onchain: db.getOnchainRecord(contract.contract_id) });
   }
 
-  const relationship = db.getRelationship(contract.relationship_id);
-  const consentTier = (req.body && req.body.consent_tier) || contract.consent_tier_recommended;
-  const chain = req.app.locals.chainService;
+  const existing = confirmationTokens.findActiveByContract(contract.contract_id);
+  const { token, otp_code, expires_at } = existing || confirmationTokens.createConfirmation(contract.contract_id);
+  const baseUrl = process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get("host")}`;
+  const confirm_url = `${baseUrl}/confirm.html?token=${token}`;
 
-  try {
-    const result = await chain.createAgreement({
-      contentHash: contract.contract_text_hash,
-      partyBAddress: relationship.parties.counterparty.on_chain_address || null,
-      tier: consentTier,
-      evidenceHash: null,
-      metadataURI: `demo://contracts/${contract.contract_id}`
-    });
-
-    const record = {
-      agreement_onchain_id: result.agreementId,
-      tx_hash: result.txHash,
-      block_number: result.blockNumber,
-      consent_tier: consentTier,
-      chain_mode: chain.mode,
-      signed_a: false,
-      signed_b: false,
-      executed: false
-    };
-    db.saveOnchainRecord(contract.contract_id, record);
-    res.json({ onchain: record, insaf: insaf.onAnchored(result) });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "chain anchoring failed", detail: err.message });
-  }
+  res.json({
+    confirmation: { token, otp_code, expires_at, confirm_url },
+    insaf: insaf.onConfirmationCreated()
+  });
 });
 
 router.post("/:id/sign", async (req, res) => {

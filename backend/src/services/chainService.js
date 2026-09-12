@@ -83,7 +83,14 @@ function createMockChainService() {
 
 // ---------- real implementation (ethers.js against a live chain) ----------
 function createRealChainService(env) {
-  const provider = new ethers.JsonRpcProvider(env.RPC_URL);
+  // cacheTimeout: -1 disables ethers v6's short-lived per-call result cache.
+  // Without this, two sendTransaction calls from the same wallet in quick
+  // succession (e.g. createAgreement immediately followed by sign) can both
+  // see a stale cached getTransactionCount("pending") result even after the
+  // first transaction has already been mined — on a fast-automining local
+  // Hardhat node this reliably produces "nonce too low" errors, since the
+  // second transaction reuses the first transaction's now-consumed nonce.
+  const provider = new ethers.JsonRpcProvider(env.RPC_URL, undefined, { cacheTimeout: -1 });
   const walletA = new ethers.Wallet(env.RELAYER_PRIVATE_KEY_A, provider); // MSME owner / relayer
   const walletB = env.RELAYER_PRIVATE_KEY_B ? new ethers.Wallet(env.RELAYER_PRIVATE_KEY_B, provider) : null; // demo counterparty
 

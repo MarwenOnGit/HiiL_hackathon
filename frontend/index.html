@@ -30,7 +30,7 @@
         <button class="step" data-step="connect"><span class="step-index">1</span>Connect</button>
         <button class="step" data-step="review"><span class="step-index">2</span>Review</button>
         <button class="step" data-step="contract"><span class="step-index">3</span>Contract</button>
-        <button class="step" data-step="anchor"><span class="step-index">4</span>Anchor &amp; Sign</button>
+        <button class="step" data-step="anchor"><span class="step-index">4</span>Confirm</button>
         <button class="step" data-step="dashboard"><span class="step-index">5</span>Dashboard</button>
       </nav>
       <button class="theme-toggle" id="theme-toggle" type="button" aria-pressed="false" aria-label="Toggle dark mode">☀︎</button>
@@ -75,15 +75,11 @@
         <button class="primary-btn" id="btn-to-anchor" disabled>Anchor this agreement</button>
       </section>
 
-      <!-- STEP 4 — Anchor & sign -->
+      <!-- STEP 4 — Get a confirmation link -->
       <section class="panel" data-panel="anchor" hidden>
-        <h1>Anchor &amp; confirm</h1>
-        <p class="lede">The agreement's fingerprint goes on-chain so its wording can't be quietly changed later.</p>
+        <h1>Get a confirmation link</h1>
+        <p class="lede">Generate a one-time link and code for your counterparty. The moment they accept it, this gets anchored and signed on-chain automatically — there's no separate confirmation step for you.</p>
         <div class="card" id="anchor-card"></div>
-        <div class="sign-row">
-          <button class="secondary-btn" id="btn-sign-a" disabled>Confirm as MSME owner</button>
-          <button class="secondary-btn" id="btn-sign-b" disabled>Confirm as counterparty (demo)</button>
-        </div>
       </section>
 
       <!-- STEP 5 — Dashboard -->
