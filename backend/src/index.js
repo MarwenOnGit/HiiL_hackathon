@@ -8,6 +8,7 @@ const relationshipsRouter = require("./routes/relationships");
 const contractsRouter = require("./routes/contracts");
 const dashboardRouter = require("./routes/dashboard");
 const confirmRouter = require("./routes/confirm");
+const threadsRouter = require("./routes/threads");
 const insaf = require("./services/insaf");
 
 const app = express();
@@ -28,6 +29,7 @@ app.use("/api/relationships", relationshipsRouter);
 app.use("/api/contracts", contractsRouter);
 app.use("/api/dashboard", dashboardRouter);
 app.use("/api/confirm", confirmRouter);
+app.use("/api/threads", threadsRouter);
 
 // Serve the static frontend (see ../../frontend) so the whole demo runs from
 // one process: `node src/index.js`, then open http://localhost:4000
