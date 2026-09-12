@@ -5,6 +5,7 @@ node_modules/
 # web/.next was committed before this rule existed; untracked with
 # `git rm -r --cached web/.next`.
 web/.next/
+web/.next/*
 web/out/
 web/build/
 *.tsbuildinfo
