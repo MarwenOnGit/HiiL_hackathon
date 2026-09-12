@@ -143,3 +143,58 @@ threads: Map<contract_id, Array<{
 - No thread deletion or editing.
 - No general-purpose (cross-agreement) inbox.
 - No real authentication for the owner side — inherits the existing prototype-wide trust model rather than introducing a new one just for this feature.
+
+## Known limitations (added 2026-09-12, post-implementation)
+
+Found by the whole-branch review of the implemented feature, then extended with
+the v3 Agent 2 liability posture. The code below is correct — it implements what
+this spec asked for. What follows is where **this spec over-promised**, recorded
+here because Sub-project D / v3's Agent 2 will be planned against this document
+and must not inherit a false premise.
+
+### What the thread is not
+
+1. **Thread messages are not attributable evidence.** `sender` is self-asserted:
+   `role` comes from a query parameter and `canPost("owner", …)` is
+   unconditionally true (Decision 3, working as designed). Anyone holding a thread
+   URL can post labelled "MSME owner". The Problem section above justifies this
+   feature partly as producing "an evidence trail for a later dispute" — **it
+   cannot do that** as built. Any component that reasons over thread history must
+   treat it as unauthenticated claims by an unidentified author, never as proof of
+   who said what.
+2. **Thread reads are unauthenticated, and contract ids are enumerable.**
+   `GET /api/threads/:contractId/messages` requires no token, and
+   `GET /api/dashboard` is open and lists every `contract_id`. Decision 2 calls the
+   confirmation token a "narrowly-scoped key to that one thread" — that is true of
+   **writes only**. Any party can read any other agreement's thread.
+3. **Message growth is unbounded and unauthenticated.** Posting as `owner` needs no
+   credential and there is no rate limit; `threads` is an in-memory Map with a
+   4000-char per-message cap and no cap on count.
+
+All three are consistent with the prototype-wide trust model and are **not** bugs
+to fix inside this sub-project. They are constraints on what may be built on top.
+
+### Agent 2 liability posture (binding on anything that consumes this thread)
+
+Part 2, reason 4 of the overview explicitly rejected an AI that mediates
+negotiation between two parties. That rejection has been **overridden
+deliberately, eyes open** — but narrowly. These five rules bind all downstream
+code, prompts and UI copy:
+
+1. **The system never decides anything binding.** It produces estimates and
+   options; every binding act is a human signature. Frame all copy accordingly.
+2. **Neutral by design.** Both parties see the SAME fact ledger and the SAME BATNA
+   figures. No advocacy language anywhere. **If a string would read differently
+   depending on which party sees it, that is a bug.**
+3. **Every BATNA number must be traceable to a published source**, presented as a
+   range, with the source shown. No invented figures, no false precision.
+4. **Settlement drafting carries a lawyer-review flag before signature**
+   (configurable gate).
+5. **Never use "force of a final judgment"** — unverified for Tunisia. Use
+   "binding settlement enforceable between the parties".
+
+Rule 2 interacts directly with limitation 1 above: a neutral fact ledger cannot
+derive "who said what" from this thread, because the thread cannot establish it.
+Facts sourced from thread messages belong in `unsupported` unless corroborated by
+something that carries real attribution (an on-chain attestation, a confirmed
+obligation event).

@@ -115,6 +115,28 @@ extending this platform must not casually reintroduce any of them:**
 3. **Tamper-evidence integrity.** An "update contract" feature that mutates the meaning of an already-anchored, already-signed agreement defeats the entire reason the product anchors anything at all. The only form of "update" that doesn't contradict the premise is **versioning**: a new agreement, a new anchor, a fresh accept/sign cycle, with an explicit on-chain link back to what it supersedes.
 4. **Liability surface.** The existing design for the monitoring/dispute agent (`ARCHITECTURE.md` §6.4) is deliberately one-directional: it recommends to the MSME owner, cites retrieved legal text, and carries an explicit honesty/confidence disclaimer. An AI that actively negotiates between two parties over money and a contract breach is a materially larger legal-liability step, not a natural extension, and should not be built without the team explicitly deciding to take on that liability with eyes open.
 
+> **OVERRIDDEN 2026-09-12 — eyes open.** The team has now explicitly taken on
+> that liability. v3's Agent 2 (resolution) does reconcile facts between both
+> parties, estimate each side's court outcome, and drive a settlement. This
+> paragraph is superseded, **not** by dropping the concern, but by replacing it
+> with a narrower posture that is binding on all code, prompts and UI copy:
+>
+> 1. The system never decides anything binding — it produces estimates and
+>    options; every binding act is a human signature.
+> 2. Neutral by design: both parties see the SAME fact ledger and the SAME BATNA
+>    figures. No advocacy language. If a string would read differently depending
+>    on which party sees it, that is a bug.
+> 3. Every BATNA number traceable to a published source, shown as a range, with
+>    the source displayed. No invented figures, no false precision.
+> 4. Settlement drafting carries a lawyer-review flag before signature
+>    (configurable gate).
+> 5. Never "force of a final judgment" — unverified for Tunisia. Use "binding
+>    settlement enforceable between the parties".
+>
+> See `CLAUDE.md` ("Agent 2 liability posture") and the Known limitations block
+> in `2026-09-12-per-agreement-chat-design.md`. Reasons 1-3 of this Part 2 still
+> stand unchanged.
+
 **The middle ground — what actually gets built instead — keeps the value
 from the bigger pitch while avoiding all four of the above:**
 
@@ -124,6 +146,17 @@ from the bigger pitch while avoiding all four of the above:**
 - Instead of an AI that negotiates: an AI that **drafts a suggested message for the owner to review and choose to send**, grounded in the per-agreement thread and retrieved legal text — the recommend-don't-act shape `ARCHITECTURE.md` §6.4 already specified, now with a real input to ground it in (Sub-project D).
 
 ## Part 3 — The four sub-projects, and the order to build them
+
+> **STATUS 2026-09-12.** A is built and merged (`9727651`). The product has since
+> moved to v3 (see `CLAUDE.md`), and the remaining three are resolved as:
+> **B (versioning)** — folded into `core/version_manager.py`; its single
+> `supersedes` field migrates mechanically into `parent_version_id`. No longer a
+> separate sub-project.
+> **C (PDF ingestion)** — superseded by `hardening_agent/ingest.py`; port anything
+> usable, then retire the spec.
+> **D (dispute recommender)** — status not yet decided; see the open question in
+> the audit. Deferred, not deleted.
+> Nothing here is deleted: anything off the demo path is deferred.
 
 Each has its own full spec (written the same day as this overview, same
 level of detail as the counterparty-confirmation spec they extend).
