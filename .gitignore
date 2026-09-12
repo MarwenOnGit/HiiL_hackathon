@@ -32,3 +32,8 @@ Thumbs.db
 
 # Local git worktrees for isolated feature work (superpowers:using-git-worktrees)
 .worktrees/
+
+# Subagent-driven-development scratch: per-plan ledgers, briefs, review
+# packages (superpowers:subagent-driven-development). Deleted after a clean
+# final review — git history is the permanent record.
+.superpowers/
