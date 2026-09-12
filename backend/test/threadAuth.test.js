@@ -2,6 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { canPost, isValidSender, isValidBody, MAX_BODY_LENGTH } = require("../src/services/threadAuth");
 const { createConfirmation, checkCode, markUsed } = require("../src/services/confirmationTokens");
+const db = require("../src/db");
 
 // Drives a confirmation all the way to "used", which is what turns the
 // token into the counterparty's durable key for that contract's thread.
@@ -42,6 +43,12 @@ test("counterparty cannot post with an unknown token", () => {
 test("an unrecognized sender can never post", () => {
   const token = confirmedTokenFor("contract_a7");
   assert.equal(canPost("admin", "contract_a7", token), false);
+});
+
+test("a used token stays a thread key after its TTL expires", () => {
+  const token = confirmedTokenFor("contract_a8");
+  db.getConfirmation(token).expires_at = Date.now() - 1000;
+  assert.equal(canPost("counterparty", "contract_a8", token), true);
 });
 
 test("isValidSender accepts only owner and counterparty", () => {

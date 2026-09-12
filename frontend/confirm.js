@@ -93,7 +93,7 @@ async function onAccept() {
   });
 
   if (ok) {
-    renderSuccess(body.contract_id);
+    renderSuccess(body.onchain && body.onchain.executed ? body.contract_id : null);
     return;
   }
 

@@ -39,7 +39,16 @@ router.post("/:token", async (req, res) => {
   } catch (err) {
     if (!(err instanceof confirmationTokens.ConfirmationError)) throw err;
     const httpStatus = err.code === "wrong_code" ? 400 : 404;
-    return res.status(httpStatus).json({ status: err.code, ...err.extra });
+    // Mirrors the GET handler's convention: a non-pending token still
+    // carries its contract_id so a genuinely entitled counterparty (e.g.
+    // "already_confirmed") isn't sent to the dead-end screen. null when
+    // the token is unrecognized and there is no record to look it up on.
+    const existing = db.getConfirmation(token);
+    return res.status(httpStatus).json({
+      status: err.code,
+      contract_id: existing ? existing.contract_id : null,
+      ...err.extra
+    });
   }
 
   const contract = db.getContract(record.contract_id);
@@ -53,7 +62,7 @@ router.post("/:token", async (req, res) => {
   // for it to do — never call the chain a second time for the same contract.
   if (db.getOnchainRecord(contract.contract_id)) {
     confirmationTokens.markUsed(token);
-    return res.status(409).json({ status: "already_confirmed" });
+    return res.status(409).json({ status: "already_confirmed", contract_id: contract.contract_id });
   }
 
   const evidence = {

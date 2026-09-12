@@ -59,6 +59,12 @@ function findActiveByContract(contractId) {
 function getStatus(token) {
   const record = db.getConfirmation(token);
   if (!record) return "invalid";
+  // Order is load-bearing: a used token must keep reporting
+  // "already_confirmed" even past its TTL, because per-agreement-chat
+  // Decision 2 repurposes a confirmed token as the counterparty's durable
+  // key to that one agreement's discussion thread (threadAuth.canPost
+  // requires getStatus(token) === "already_confirmed"). Checking
+  // expires_at before used would silently revoke that access after 7 days.
   if (record.used) return "already_confirmed";
   if (record.burned) return "expired";
   if (Date.now() > record.expires_at) return "expired";

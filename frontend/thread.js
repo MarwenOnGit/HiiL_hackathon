@@ -47,11 +47,16 @@ function formatTime(iso) {
 
 // The owner's badge on the Dashboard is driven entirely from the browser
 // (there is no server-side read state), so opening the thread is what
-// marks it seen.
-function markSeen() {
+// marks it seen. The stamp must be the server-assigned sent_at of the
+// newest message, not the browser's clock — the badge compares this value
+// against other messages' server-stamped sent_at, and a browser/server
+// clock mismatch would otherwise corrupt the comparison permanently.
+function markSeen(messages) {
   if (role !== "owner") return;
+  if (!messages.length) return;
+  const newest = messages[messages.length - 1].sent_at;
   try {
-    localStorage.setItem(`insaf-thread-seen-${contractId}`, new Date().toISOString());
+    localStorage.setItem(`insaf-thread-seen-${contractId}`, newest);
   } catch (err) {
     /* private mode or blocked storage — the badge just stays visible */
   }
@@ -98,7 +103,7 @@ async function loadMessages() {
   el("thread-card").hidden = false;
   el("compose-card").hidden = false;
   renderMessages(body.messages);
-  markSeen();
+  markSeen(body.messages);
 }
 
 async function onSend() {
