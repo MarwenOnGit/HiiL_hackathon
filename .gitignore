@@ -37,3 +37,7 @@ Thumbs.db
 # packages (superpowers:subagent-driven-development). Deleted after a clean
 # final review — git history is the permanent record.
 .superpowers/
+
+# Python bytecode from the agent layer
+__pycache__/
+*.py[cod]

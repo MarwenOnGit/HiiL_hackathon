@@ -210,3 +210,30 @@ document store exists, encrypted or otherwise — invariant 3 depends on one bei
 
 **6. `ARCHITECTURE.md` still describes v1/v2** and declares itself the source of truth. It is being
 updated in a separate, reviewable PR because a teammate reads that file.
+
+**7. `ContractVersion.effective_to` is derived, never stored.** A version's window
+closes when its successor takes force. Storing it would mean writing to an existing
+version at the moment the next one is signed — exactly what invariant 1 forbids.
+`version_manager.effective_to(contract, version_id)` computes it from the lineage,
+walking past undated proposals, so nothing is ever written twice.
+
+**8. `status` is derived too; the stored field is a cache.** A version is `proposed`
+while it has no `effective_from`, `superseded` once a successor takes force, and
+`in_force` otherwise. `version_manager.status_of()` always recomputes and never reads
+the stored field, so a stale or hand-edited value cannot change behaviour.
+`version_manager` is the field's only writer. A consequence that matches the anchoring
+policy rather than fighting it: **a proposed version never becomes in-force.** A
+hardened proposal stays proposed forever, and signing creates a *new* version whose
+parent is that proposal — "a proposal is not a fact."
+
+**9. Obligations live on their clause and nowhere else.** The data model lists
+`obligations[]` on both `Clause` and `ContractObject`; two copies of one list drift
+apart. `ContractObject.obligations()` is an accessor that walks the clauses.
+
+**10. Sub-project D (dispute recommender) is retired as a separate piece**, deferred
+not deleted. v3's `resolution_agent/` subsumes it; D's recommend-don't-act grounding
+discipline survives as the Agent 2 liability posture above.
+
+**11. The agent layer is `agent/` (Python) at the repo root**, and `/agent-service`
+is deliberately left uncreated — see `agent/README.md`. No Python existed in this repo
+or on any remote branch, so nothing was ported and nothing duplicated.
