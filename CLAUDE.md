@@ -237,3 +237,38 @@ discipline survives as the Agent 2 liability posture above.
 **11. The agent layer is `agent/` (Python) at the repo root**, and `/agent-service`
 is deliberately left uncreated — see `agent/README.md`. No Python existed in this repo
 or on any remote branch, so nothing was ported and nothing duplicated.
+
+**12. Retrieval is lexical (BM25) over article-boundary chunks, not Chroma — for now.**
+`chromadb` is not installed and pip is PEP-668 externally-managed, so it cannot be
+added offline. `rag/index.build_index()` returns the Chroma-backed index the moment
+`chromadb` imports, and the stdlib `InMemoryIndex` otherwise. This is not purely a
+workaround: a legal corpus is looked up by exact terms (an article number, "délai de
+livraison"), lexical scoring is strong at exactly that, there is no model download to
+fail on venue wifi, and a ~30-article corpus is far too small for embeddings to earn
+their cost.
+
+**13. The relevance floor is term coverage, not an absolute BM25 score.** BM25's idf
+shrinks with the corpus, so an absolute threshold rejected a perfect match on a small
+corpus (0.575 against a 0.8 floor) — and would have silently dropped correct citations
+on the real ~30-article corpus. `MIN_COVERAGE` asks the question actually meant: does
+this chunk contain enough of what was asked about to be cited for it?
+
+**14. The agent layer fingerprints with sha256; the Node side uses keccak256.** Matching
+ethers' keccak would mean pulling a crypto dependency into Python for no benefit while
+the chain is a fake. **The real-chain cutover must settle on one hash function** — this
+is called out in the cross-team request.
+
+**15. On-chain `parent_doc_id` points to the nearest *anchored* ancestor.** The off-chain
+parent of a signed version is the hardened proposal, but a proposal is deliberately never
+anchored and so has no `doc_id`. Off-chain lineage and on-chain provenance are both
+complete; they differ in granularity by design.
+
+**16. The v3 UI is a standalone page (`frontend/harden.html`), not surgery on the wizard.**
+That follows the repo's own established convention (`confirm.html`, `thread.html`) and
+leaves the working v1 path untouched. It is linked from the wizard's step bar.
+
+**17. `rag/corpus/` ships empty, deliberately.** No legal text has been authored by this
+tooling and none should be — inventing an article to make the demo look complete is
+exactly invariant 7's failure mode, and it is the one a legal judge will catch. Every
+legal finding currently renders "no legal basis retrieved", which is a correct result.
+Drop the corpus in per `rag/corpus/README.md` and citations appear with no code change.

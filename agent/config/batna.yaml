@@ -1,0 +1,50 @@
+# Court-outcome reference figures.
+#
+# These are standardised published figures, not predictions about this case.
+# Every number here MUST carry its source, and every number shown to a user
+# MUST be presented as a range with that source visible — CLAUDE.md's Agent 2
+# posture, rule 3. Nothing in this file may be quoted without its `source`.
+#
+# Correct these in place when better figures are found. No agent code changes.
+
+reference:
+  source: "World Bank, Doing Business 2020 — Tunisia, 'Enforcing Contracts'"
+  scope: "First-instance, standardised commercial claim. Appeals are additional."
+  duration_days: 565
+  cost_percent_of_claim: 21.8
+  # Published figures are point estimates of a standardised case. Presenting
+  # one as if it predicted THIS case would be false precision, so the estimator
+  # widens it into a band and always shows the band, never the point.
+  uncertainty_band: 0.25
+
+paths:
+  # The estimator must branch on this: an uncontested debt has a materially
+  # better route than a contested one, and an agent that ignores that is
+  # overselling settlement.
+  contested:
+    label_fr: "créance contestée"
+    label_ar: "دين متنازع عليه"
+    uses_reference_figures: true
+    note_fr: >-
+      Le défendeur conteste la dette. La procédure ordinaire s'applique; les
+      durées et coûts de référence ci-dessus sont le point de comparaison.
+    note_ar: >-
+      المدعى عليه ينازع في الدين. تنطبق الإجراءات العادية، وتمثل المدد
+      والتكاليف المرجعية أعلاه نقطة المقارنة.
+  uncontested:
+    label_fr: "créance non contestée"
+    label_ar: "دين غير متنازع عليه"
+    uses_reference_figures: false
+    # Deliberately no invented duration or cost. We state that a faster route
+    # exists without fabricating figures for it — saying "much faster" with a
+    # made-up number attached would be exactly invariant 7's failure mode
+    # applied to procedure instead of to law.
+    note_fr: >-
+      La dette n'est pas contestée quant à son principe. Une voie d'injonction
+      de payer est généralement plus rapide et moins coûteuse que la procédure
+      ordinaire; les chiffres de référence ci-dessus la surestiment donc
+      nettement. Faire vérifier la voie applicable par un avocat.
+    note_ar: >-
+      الدين غير متنازع عليه من حيث المبدأ. عادة ما يكون طريق أمر الأداء أسرع
+      وأقل كلفة من الإجراءات العادية، ولذلك فإن الأرقام المرجعية أعلاه تبالغ
+      في تقديره. يُنصح بمراجعة محامٍ لتأكيد الطريق المنطبق.

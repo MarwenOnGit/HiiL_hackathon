@@ -41,3 +41,7 @@ Thumbs.db
 # Python bytecode from the agent layer
 __pycache__/
 *.py[cod]
+
+# Agent service runtime state and logs
+agent/data/
+agent-service.log

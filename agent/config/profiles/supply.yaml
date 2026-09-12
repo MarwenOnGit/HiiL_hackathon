@@ -1,0 +1,173 @@
+# Supply-contract profile — the deterministic half of gap detection.
+#
+# Everything here is commercial drafting practice and language pattern matching.
+# NOTHING here asserts what the law requires: there is not one article reference
+# in this file, and there must never be one. A legal basis may only ever come
+# from a retrieved corpus chunk (invariant 7). The checklist can say "this
+# contract has no delivery deadline"; only retrieval can say what the law makes
+# of that.
+#
+# This file is why findings are reproducible across runs. Run it twice, get the
+# same findings — a demo that answers differently each time is worthless.
+
+name: supply
+label_fr: "Contrat de fourniture"
+label_ar: "عقد توريد"
+
+# TWO kinds of cue, and the distinction is load-bearing:
+#
+#   cues_*        STRICT presence test, used by the gap detector. For
+#                 delivery_deadline these deliberately all imply a *number*,
+#                 because the requirement is a quantified deadline — a contract
+#                 that says "livraison dans un delai raisonnable" must still be
+#                 reported as missing one.
+#   topic_cues_*  LOOSE subject test, used only by the classifier to decide
+#                 which requirement a clause is *about*. Adding "livraison"
+#                 here lets the delivery clause be classified correctly without
+#                 suppressing the gap finding above.
+#
+# Putting a loose cue in cues_* would silently delete a true finding, which is
+# the worse failure of the two.
+#
+# A clause is considered present if any of its cues appears. Cues are matched
+# case- and accent-insensitively against clause text.
+required_clauses:
+  - id: parties
+    topic_cues_fr: ["parties"]
+    label_fr: "Identification des parties"
+    severity: high
+    # Kept deliberately narrow: "le fournisseur" and "l'acheteur" appear in
+    # almost every clause of a supply contract and made this rule swallow them.
+    cues_fr: ["entre les soussignes", "entre :", "designe ci-apres", "designee ci-apres"]
+    cues_ar: ["بين الطرفين", "المورد", "المشتري"]
+    why_fr: "Sans identification precise des parties, l'accord est difficile a opposer a qui que ce soit."
+  - id: subject
+    topic_cues_fr: ["objet"]
+    label_fr: "Objet / marchandises"
+    severity: high
+    cues_fr: ["objet du contrat", "fournir", "livrer", "marchandise", "produits", "prestation"]
+    cues_ar: ["موضوع العقد", "توريد", "بضاعة"]
+    why_fr: "Ce qui est vendu doit etre decrit assez precisement pour qu'un tiers puisse verifier la conformite."
+  - id: price
+    topic_cues_fr: ["prix", "tarif"]
+    label_fr: "Prix"
+    severity: high
+    cues_fr: ["prix", "montant", "tnd", "dinars", "euros"]
+    cues_ar: ["الثمن", "المبلغ", "دينار"]
+    why_fr: "Un prix non chiffre est la premiere cause de desaccord."
+  - id: payment_terms
+    topic_cues_fr: ["paiement", "reglement"]
+    label_fr: "Modalites et delai de paiement"
+    severity: high
+    cues_fr: ["paiement", "reglement", "a 30 jours", "net 30", "virement", "echeance"]
+    cues_ar: ["الدفع", "الخلاص", "أجل الدفع"]
+    why_fr: "Sans echeance chiffree, impossible de dire a quelle date un paiement est en retard."
+  - id: delivery_deadline
+    topic_cues_fr: ["livraison", "livrer", "expedition"]
+    topic_cues_ar: ["التسليم", "تسليم"]
+    label_fr: "Delai de livraison chiffre"
+    severity: high
+    cues_fr: ["delai de livraison", "livraison sous", "jours ouvrables", "date de livraison", "livrer avant"]
+    cues_ar: ["أجل التسليم", "التسليم في", "أيام عمل"]
+    why_fr: "Un delai chiffre est ce qui transforme un retard en fait verifiable plutot qu'en appreciation."
+  - id: conformity
+    topic_cues_fr: ["qualite", "conformite", "reception"]
+    topic_cues_ar: ["الجودة", "المطابقة"]
+    label_fr: "Conformite et controle a reception"
+    severity: high
+    cues_fr: ["conformite", "conforme", "reception", "controle", "verification", "defaut", "vice"]
+    cues_ar: ["المطابقة", "الاستلام", "المراقبة", "عيب"]
+    why_fr: "Sans procedure de controle a reception, un desaccord sur la qualite n'a aucun point d'ancrage."
+  - id: late_delivery
+    topic_cues_fr: ["retard de livraison", "penalite"]
+    label_fr: "Consequence d'un retard de livraison"
+    severity: medium
+    cues_fr: ["retard de livraison", "penalite", "penalites de retard", "indemnite"]
+    cues_ar: ["تأخير التسليم", "غرامة", "تعويض"]
+    why_fr: "Si rien n'est prevu, chaque retard se negocie de zero."
+  - id: late_payment
+    topic_cues_fr: ["retard de paiement", "interets"]
+    label_fr: "Consequence d'un retard de paiement"
+    severity: medium
+    cues_fr: ["retard de paiement", "interets de retard", "penalite de retard"]
+    cues_ar: ["تأخير الدفع", "فوائد التأخير"]
+    why_fr: "Symetrique du precedent: le fournisseur a besoin du meme point d'ancrage."
+  - id: duration_termination
+    topic_cues_fr: ["duree", "resiliation"]
+    label_fr: "Duree et resiliation"
+    severity: medium
+    cues_fr: ["duree", "resiliation", "resilier", "preavis", "reconduction"]
+    cues_ar: ["المدة", "الفسخ", "إشعار مسبق"]
+    why_fr: "Une relation recurrente sans regle de sortie se termine mal."
+  - id: dispute_resolution
+    topic_cues_fr: ["differend", "litige", "reglement des differends"]
+    label_fr: "Reglement des differends"
+    severity: medium
+    cues_fr: ["differend", "litige", "mediation", "conciliation", "tribunal", "arbitrage"]
+    cues_ar: ["النزاع", "الوساطة", "التحكيم", "المحكمة"]
+    why_fr: "Convenir a froid de la maniere de regler un desaccord coute bien moins cher qu'a chaud."
+  - id: force_majeure
+    topic_cues_fr: ["force majeure"]
+    label_fr: "Force majeure"
+    severity: low
+    cues_fr: ["force majeure", "cas fortuit", "evenement imprevisible"]
+    cues_ar: ["القوة القاهرة"]
+    why_fr: "Sans clause, toute interruption exterieure devient discutable."
+
+# Vague terms that create disputes. These are language findings, not legal ones:
+# the tool reports that a term has no objective criterion, never that it is
+# unlawful.
+ambiguous_terms:
+  - pattern_fr: "delai raisonnable"
+    pattern_ar: "أجل معقول"
+    label_fr: "« delai raisonnable » n'a pas de valeur chiffree"
+    fix_fr: "Remplacer par un nombre de jours ouvrables a compter d'un evenement precis."
+  - pattern_fr: "dans les meilleurs delais"
+    pattern_ar: "في أقرب الآجال"
+    label_fr: "« dans les meilleurs delais » ne fixe aucune echeance"
+    fix_fr: "Remplacer par une date ou un nombre de jours."
+  - pattern_fr: "qualite convenue"
+    pattern_ar: "الجودة المتفق عليها"
+    label_fr: "« qualite convenue » ne renvoie a aucun standard verifiable"
+    fix_fr: "Renvoyer a une norme, un echantillon de reference ou des specifications annexees."
+  - pattern_fr: "prix du marche"
+    pattern_ar: "سعر السوق"
+    label_fr: "« prix du marche » n'est pas un prix determinable sans methode"
+    fix_fr: "Fixer le prix, ou definir un indice et une date de releve."
+  - pattern_fr: "si possible"
+    pattern_ar: "إن أمكن"
+    label_fr: "« si possible » vide l'obligation de sa force"
+    fix_fr: "Indiquer si l'obligation est ferme, et sinon a quelles conditions elle tombe."
+  - pattern_fr: "rapidement"
+    pattern_ar: "بسرعة"
+    label_fr: "« rapidement » n'est pas mesurable"
+    fix_fr: "Remplacer par un delai chiffre."
+  - pattern_fr: "quantite approximative"
+    pattern_ar: "كمية تقريبية"
+    label_fr: "une quantite approximative empeche de constater une livraison incomplete"
+    fix_fr: "Indiquer la quantite exacte et la tolerance acceptee."
+
+# One-sided constructions. Reported for awareness and NEVER silently rewritten
+# — an asymmetric clause can be perfectly enforceable and deliberately agreed.
+asymmetric_patterns:
+  - pattern_fr: "le fournisseur pourra resilier a tout moment"
+    label_fr: "resiliation unilaterale sans preavis au profit d'une seule partie"
+  - pattern_fr: "l'acheteur pourra resilier a tout moment"
+    label_fr: "resiliation unilaterale sans preavis au profit d'une seule partie"
+  - pattern_fr: "sans preavis"
+    label_fr: "absence de preavis — verifier que la faculte joue dans les deux sens"
+  - pattern_fr: "ne pourra en aucun cas etre tenu responsable"
+    label_fr: "exoneration totale de responsabilite d'une seule partie"
+  - pattern_fr: "seul le fournisseur"
+    label_fr: "faculte reservee a une seule partie"
+  - pattern_fr: "seul l'acheteur"
+    label_fr: "faculte reservee a une seule partie"
+
+# Obligation extraction cues: who owes what, and when it falls due.
+obligation_cues:
+  fr:
+    deliver: ["livrer", "livraison", "fournir", "expedier"]
+    pay: ["payer", "paiement", "regler", "reglement"]
+  ar:
+    deliver: ["تسليم", "توريد"]
+    pay: ["دفع", "خلاص"]

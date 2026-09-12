@@ -15,11 +15,17 @@ RPC_URL="http://127.0.0.1:8545"
 MODE="${1:-real}"
 HARDHAT_PID=""
 STARTED_HARDHAT=0
+AGENT_PID=""
+AGENT_PORT="${AGENT_PORT:-5001}"
 
 log() { printf '\033[1;34m[start.sh]\033[0m %s\n' "$1"; }
 die() { printf '\033[1;31m[start.sh]\033[0m %s\n' "$1" >&2; exit 1; }
 
 cleanup() {
+  if [[ -n "$AGENT_PID" ]] && kill -0 "$AGENT_PID" 2>/dev/null; then
+    log "Stopping agent service (pid $AGENT_PID)…"
+    kill "$AGENT_PID" 2>/dev/null || true
+  fi
   if [[ "$STARTED_HARDHAT" == "1" && -n "$HARDHAT_PID" ]] && kill -0 "$HARDHAT_PID" 2>/dev/null; then
     log "Stopping local chain (pid $HARDHAT_PID)…"
     kill "$HARDHAT_PID" 2>/dev/null || true
@@ -101,6 +107,36 @@ else
 fi
 
 install_if_needed "$BACKEND_DIR"
+
+# --- Agent service (v3 analysis layer, ARCHITECTURE.md Section 3) -------------
+# The backend degrades gracefully without it: anchoring and confirmation keep
+# working and the UI says analysis is unavailable. So a failure to start here is
+# a warning, never a reason to abort the demo.
+AGENT_DIR="$ROOT_DIR/agent"
+if [[ -d "$AGENT_DIR" ]] && command -v python3 >/dev/null 2>&1; then
+  if python3 -c "import fastapi, uvicorn" >/dev/null 2>&1; then
+    if curl -s -o /dev/null -m 2 "http://127.0.0.1:${AGENT_PORT}/health"; then
+      log "An agent service is already answering on port ${AGENT_PORT} — reusing it."
+    else
+      log "Starting agent service on http://127.0.0.1:${AGENT_PORT}…"
+      (cd "$AGENT_DIR" && exec python3 -m uvicorn service:app \
+        --host 127.0.0.1 --port "$AGENT_PORT" --log-level warning \
+        > "$ROOT_DIR/agent-service.log" 2>&1) &
+      AGENT_PID=$!
+      for _ in $(seq 1 20); do
+        curl -s -o /dev/null -m 1 "http://127.0.0.1:${AGENT_PORT}/health" && break
+        sleep 0.5
+      done
+      if curl -s -o /dev/null -m 1 "http://127.0.0.1:${AGENT_PORT}/health"; then
+        log "Agent service up."
+      else
+        log "Agent service didn't come up — check agent-service.log. Continuing without it."
+      fi
+    fi
+  else
+    log "python3 is present but fastapi/uvicorn are not — skipping the agent service."
+  fi
+fi
 
 log "Starting backend on http://localhost:4000 (serves the frontend too)…"
 log "Press Ctrl+C to stop everything."

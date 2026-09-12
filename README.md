@@ -123,3 +123,34 @@ zero blockchain dependency, in case the local devnet misbehaves five minutes
 before you're on stage. Same API, same frontend, same everything; only the
 chain calls are faked. Flip one env var back to `real` once you trust the
 setup again.
+
+## Running the whole thing (v3)
+
+```bash
+./start.sh mock          # chain fake + agent service + backend on :4000
+cd agent && python3 scripts/seed_demo.py    # reproducible demo dataset
+./reset.sh               # back to the seeded state, any time
+cd agent && python3 scripts/smoke_test.py   # 28 checks over the real stack
+```
+
+Open **http://localhost:4000/harden.html** for the v3 flow (analyse → harden →
+sign → resolve a dispute), or http://localhost:4000 for the original anchoring
+wizard. Both run from the same backend.
+
+`./start.sh` with no argument uses a real local Hardhat chain instead of the
+fake. The agent service is optional: if it is down, anchoring and counterparty
+confirmation keep working and the UI says analysis is unavailable.
+
+### Tests
+
+```bash
+cd agent && python3 -m unittest discover -s tests -q   # 115, no installs needed
+cd backend && npm test                                  # 22
+```
+
+### The legal corpus is empty on purpose
+
+Every legal finding currently renders "no legal basis retrieved". That is a
+correct result, not a bug: no legal text has been invented to fill the gap.
+Add real text under `agent/rag/corpus/` (see the README there) and citations
+appear with no code change.

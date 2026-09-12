@@ -8,6 +8,7 @@ const relationshipsRouter = require("./routes/relationships");
 const contractsRouter = require("./routes/contracts");
 const dashboardRouter = require("./routes/dashboard");
 const confirmRouter = require("./routes/confirm");
+const agentRouter = require("./routes/agent");
 const threadsRouter = require("./routes/threads");
 const insaf = require("./services/insaf");
 
@@ -30,6 +31,8 @@ app.use("/api/contracts", contractsRouter);
 app.use("/api/dashboard", dashboardRouter);
 app.use("/api/confirm", confirmRouter);
 app.use("/api/threads", threadsRouter);
+// v3 analysis layer — proxied to the Python agent service (ARCHITECTURE.md §3)
+app.use("/api/agent", agentRouter);
 
 // Serve the static frontend (see ../../frontend) so the whole demo runs from
 // one process: `node src/index.js`, then open http://localhost:4000
