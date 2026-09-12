@@ -7,6 +7,7 @@ const relationships = new Map();
 const contracts = new Map();
 const agreementsOnchain = new Map(); // keyed by contract_id
 const pendingConfirmations = new Map(); // keyed by confirmation token
+const threads = new Map(); // keyed by contract_id → ordered array of messages
 
 function saveRelationship(rel) {
   relationships.set(rel.relationship_id, rel);
@@ -52,6 +53,17 @@ function listConfirmations() {
   return Array.from(pendingConfirmations.values());
 }
 
+function appendMessage(contractId, message) {
+  const existing = threads.get(contractId) || [];
+  existing.push(message);
+  threads.set(contractId, existing);
+  return message;
+}
+
+function getMessages(contractId) {
+  return threads.get(contractId) || [];
+}
+
 function dashboardRows() {
   return listContracts().map((c) => {
     const onchain = getOnchainRecord(c.contract_id);
@@ -79,5 +91,7 @@ module.exports = {
   saveConfirmation,
   getConfirmation,
   listConfirmations,
+  appendMessage,
+  getMessages,
   dashboardRows
 };

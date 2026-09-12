@@ -13,7 +13,14 @@ const router = express.Router();
 
 router.get("/:token", (req, res) => {
   const status = confirmationTokens.getStatus(req.params.token);
-  if (status !== "pending") return res.status(404).json({ status });
+  if (status !== "pending") {
+    // A confirmed token stays usable as the counterparty's durable key to
+    // this one agreement's discussion thread (per-agreement-chat design,
+    // Decision 2), so the caller needs to know which contract it belongs
+    // to. Status code is unchanged — only the body gains a field.
+    const record = db.getConfirmation(req.params.token);
+    return res.status(404).json({ status, contract_id: record ? record.contract_id : null });
+  }
 
   const record = db.getConfirmation(req.params.token);
   const contract = db.getContract(record.contract_id);
@@ -32,7 +39,16 @@ router.post("/:token", async (req, res) => {
   } catch (err) {
     if (!(err instanceof confirmationTokens.ConfirmationError)) throw err;
     const httpStatus = err.code === "wrong_code" ? 400 : 404;
-    return res.status(httpStatus).json({ status: err.code, ...err.extra });
+    // Mirrors the GET handler's convention: a non-pending token still
+    // carries its contract_id so a genuinely entitled counterparty (e.g.
+    // "already_confirmed") isn't sent to the dead-end screen. null when
+    // the token is unrecognized and there is no record to look it up on.
+    const existing = db.getConfirmation(token);
+    return res.status(httpStatus).json({
+      status: err.code,
+      contract_id: existing ? existing.contract_id : null,
+      ...err.extra
+    });
   }
 
   const contract = db.getContract(record.contract_id);
@@ -46,7 +62,7 @@ router.post("/:token", async (req, res) => {
   // for it to do — never call the chain a second time for the same contract.
   if (db.getOnchainRecord(contract.contract_id)) {
     confirmationTokens.markUsed(token);
-    return res.status(409).json({ status: "already_confirmed" });
+    return res.status(409).json({ status: "already_confirmed", contract_id: contract.contract_id });
   }
 
   const evidence = {
@@ -81,7 +97,11 @@ router.post("/:token", async (req, res) => {
     db.saveOnchainRecord(contract.contract_id, onchainRecord);
     confirmationTokens.markUsed(token);
 
-    res.json({ onchain: onchainRecord, insaf: insaf.onSigned("partyA", signed.executed) });
+    res.json({
+      onchain: onchainRecord,
+      insaf: insaf.onSigned("partyA", signed.executed),
+      contract_id: contract.contract_id
+    });
   } catch (err) {
     // Deliberately do NOT call markUsed here — checkCode already verified
     // the code was correct, and a chain hiccup must not cost the
