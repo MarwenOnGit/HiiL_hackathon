@@ -13,7 +13,14 @@ const router = express.Router();
 
 router.get("/:token", (req, res) => {
   const status = confirmationTokens.getStatus(req.params.token);
-  if (status !== "pending") return res.status(404).json({ status });
+  if (status !== "pending") {
+    // A confirmed token stays usable as the counterparty's durable key to
+    // this one agreement's discussion thread (per-agreement-chat design,
+    // Decision 2), so the caller needs to know which contract it belongs
+    // to. Status code is unchanged — only the body gains a field.
+    const record = db.getConfirmation(req.params.token);
+    return res.status(404).json({ status, contract_id: record ? record.contract_id : null });
+  }
 
   const record = db.getConfirmation(req.params.token);
   const contract = db.getContract(record.contract_id);
@@ -81,7 +88,11 @@ router.post("/:token", async (req, res) => {
     db.saveOnchainRecord(contract.contract_id, onchainRecord);
     confirmationTokens.markUsed(token);
 
-    res.json({ onchain: onchainRecord, insaf: insaf.onSigned("partyA", signed.executed) });
+    res.json({
+      onchain: onchainRecord,
+      insaf: insaf.onSigned("partyA", signed.executed),
+      contract_id: contract.contract_id
+    });
   } catch (err) {
     // Deliberately do NOT call markUsed here — checkCode already verified
     // the code was correct, and a chain hiccup must not cost the
