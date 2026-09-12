@@ -70,16 +70,22 @@ export default function DashboardPage() {
     setError("");
     setAdding(true);
     try {
-      const rel = await api<{ relationship_id?: string; error?: string }>("/api/relationships/demo", {
-        method: "POST"
-      });
-      if (!rel.ok || !rel.body.relationship_id) throw new Error(String(rel.body.error || "demo failed"));
-      const gen = await api<{ contract_id?: string; error?: string }>("/api/contracts/generate", {
-        method: "POST",
-        body: JSON.stringify({ relationship_id: rel.body.relationship_id })
-      });
-      if (!gen.ok || !gen.body.contract_id) throw new Error(String(gen.body.error || "generation failed"));
-      const id = gen.body.contract_id;
+      const rel = await api<{ relationship?: { relationship_id?: string }; error?: string }>(
+        "/api/relationships/demo",
+        { method: "POST" }
+      );
+      if (!rel.ok || !rel.body.relationship?.relationship_id)
+        throw new Error(String(rel.body.error || "demo failed"));
+      const gen = await api<{ contract?: { contract_id?: string }; error?: string }>(
+        "/api/contracts/generate",
+        {
+          method: "POST",
+          body: JSON.stringify({ relationship_id: rel.body.relationship.relationship_id })
+        }
+      );
+      if (!gen.ok || !gen.body.contract?.contract_id)
+        throw new Error(String(gen.body.error || "generation failed"));
+      const id = gen.body.contract.contract_id;
       const created = await api<{ invite?: { invite_url: string }; contract_id?: string }>(
         `/api/invites/${encodeURIComponent(id)}`,
         { method: "POST" }
