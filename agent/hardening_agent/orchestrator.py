@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from blockchain_client.client import BlockchainClient
+from core.hashing import content_hash
 from core.schemas import Clause, ContractObject, Obligation, Party
 from core.taxonomy import DocType, Language
 from core.version_manager import add_version
@@ -116,7 +117,7 @@ def harden(
             span=seg.span,
         ))
 
-    text_hash = _keccak_like(text)
+    text_hash = content_hash(text)
     original = add_version(
         contract,
         doc_type=DocType.ORIGINAL,
@@ -168,13 +169,5 @@ def harden(
     )
 
 
-def _keccak_like(text: str) -> str:
-    """A 32-byte hex fingerprint of the contract text.
-
-    sha256, not keccak256: the Node side hashes with keccak via ethers, and
-    matching that would mean pulling a crypto dependency into the agent layer
-    for no benefit while the chain is a fake. The real chain cutover must
-    settle on one hash function — flagged in the cross-team request.
-    """
-    import hashlib
-    return "0x" + hashlib.sha256(text.encode("utf-8")).hexdigest()
+# Resolved: the fingerprint is Keccak-256 over a canonical byte form, matching
+# Solidity and ethers exactly. See core/hashing.py.

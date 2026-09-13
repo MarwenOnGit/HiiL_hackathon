@@ -106,12 +106,10 @@ def resolve(
     if chain is not None:
         # Proof that resolution was attempted before court — the product's
         # central legal claim, and the reason this event is anchored at all.
-        import hashlib
-        payload = hashlib.sha256(
-            "|".join(sorted(f.fact for f in facts)).encode("utf-8")
-        ).hexdigest()
+        from core.hashing import content_hash
+        payload = content_hash("|".join(sorted(f.fact for f in facts)))
         record = chain.attest_event(
-            contract.contract_id, EventType.DISPUTE_OPENED, f"0x{payload}",
+            contract.contract_id, EventType.DISPUTE_OPENED, payload,
             contract.parties[0].pseudonym if contract.parties else "pseudo_unknown",
         )
         attest_tx = record.tx_hash

@@ -95,6 +95,72 @@ We have already built it on our side
 **you do not need to implement this.** It is listed only so the four names in
 the v3 brief are all accounted for. What we need from you is #1–#3.
 
+## RESOLVED — the hash function, and the bytes that go into it
+
+**Keccak-256.** The agent layer previously used sha256; it has been changed to
+conform, because Solidity's `keccak256` is the cheap builtin and the entire
+ethers/Node surface already assumes it. Nothing is being asked of you here —
+this is recorded so both sides can prove agreement.
+
+**The algorithm is only half of it.** Two systems hashing "the same document"
+disagree over encoding, line endings and trailing whitespace just as easily as
+over the digest function, and those disagreements are invisible in the text.
+The canonical byte form is pinned on both sides — `agent/core/hashing.py`
+(`canonical_bytes`) and `backend/src/services/contentHash.js` (`canonicalText`):
+
+1. Unicode **NFC**
+2. `\r\n` and lone `\r` become `\n`
+3. trailing whitespace stripped **per line**
+4. leading/trailing blank space of the whole document stripped
+5. **UTF-8**, then Keccak-256
+
+### Test vectors — verify without coordinating with us
+
+```
+input : "CONTRAT DE FOURNITURE\nArticle 1 - Objet\nLivraison de panneaux."
+digest: 0xb688abbdf2658d16a5d8400bc131476e33ceedc03ecf2d97f5639eaf4b94f912
+
+input : ""   (empty string)
+digest: 0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470
+```
+
+The empty-string vector is the standard Keccak-256 constant, so it also tells
+you whether your library is Keccak or NIST SHA3 — SHA3-256("") is
+`0xa7ffc6f8…`, and confusing the two is the classic failure here.
+
+These three inputs must all produce the **same** digest, which is what proves
+the canonicalisation rather than just the algorithm:
+
+```
+"a\r\nb"   "a  \nb"   "\n a\nb \n\n"   ->  0xb688abbdf2658d16… (all identical)
+```
+
+A test pins the first vector (`agent/tests/test_hashing.py`), so if this
+document ever goes stale the suite fails rather than letting you verify against
+a dead value.
+
+## RESOLVED on our side — party identity is explicitly stubbed
+
+You asked what to do about every agreement sharing the same two Hardhat keys.
+We are **not** solving it before the demo, and we are saying so out loud rather
+than implying a pseudonymity we do not have.
+
+**What we do now (deferred).** A party's on-chain identifier is a salted
+Keccak-256 hash of its internal party record — `agent/core/identity.py` — and is
+anchored **as data, never as a signer**. Stable across anchors, distinct per
+party, no key management. It does **not** authenticate: every transaction is
+still submitted by the platform relayer, and nothing proves the named party
+consented.
+
+**What real identity would require.** Each party holding its own keypair and
+signing its own agreements, with the address as the identity. That is custody,
+key recovery and onboarding — a project, not a task, and not something to start
+this week.
+
+`GET /health` on the agent service reports this as a structured `identity`
+block so no part of the UI has to guess what an identifier is worth. **If you
+add per-party signing later, that is the field to flip.**
+
 ## Hard constraint, please treat as non-negotiable
 
 **Only hashes, pseudonymous party ids, timestamps and event types go on-chain.**
@@ -111,10 +177,11 @@ These are pre-existing and not caused by v3; you may already know them.
 
 1. **Every agreement shares the same two wallets.** `RELAYER_PRIVATE_KEY_A/B`
    are Hardhat's well-known public test keys, so `partyA`/`partyB` are
-   identical for every agreement regardless of who the real parties are. v3's
-   "pseudonymous party ids" has no foundation until there is some per-party
-   identity — even a derived pseudonym would do. **This is the one item that
-   needs a decision from you before #1 is buildable.**
+   identical for every agreement. **Answered on our side** — see the stubbed
+   identity section above: we now pass a derived pseudonym as *data*, which
+   unblocks `anchor_document` without requiring per-party keys from you. If you
+   later want real per-party signing, that is a product decision to take
+   together, not a blocker for this build.
 2. **`metadataURI` is a dead placeholder.** It is written as
    `demo://contracts/<id>` and never resolved; no off-chain document store
    exists. v3 needs one, encrypted, and `fetch_contract` above depends on it.
@@ -146,7 +213,7 @@ name. You are not being asked for both.
 - Yes/no on `doc_type` + `parent_doc_id` being additive to the struct.
 - Whether `attest_event` is in scope for you, or whether we should keep it on
   the fake for the demo and show the anchor path only.
-- Your answer on per-party identity (item 1 above) — this is the blocker.
+- Confirmation that the Keccak-256 vectors above reproduce on your side.
 - A rough ETA, so we know whether to plan the demo around the fake or the real
   chain.
 

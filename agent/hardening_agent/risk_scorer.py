@@ -25,6 +25,10 @@ class Finding:
     flag: RiskFlag
     matched_text: str
     suggested_fix: str = ""
+    # An article a human has read and confirmed governs this defect. Takes
+    # precedence over lexical search, which answers "shares vocabulary with"
+    # rather than "governs".
+    verified_article: str = ""
 
 
 def score_clause(text: str, profile: dict[str, Any], language: Language) -> list[Finding]:
@@ -40,6 +44,7 @@ def score_clause(text: str, profile: dict[str, Any], language: Language) -> list
                 flag=RiskFlag(kind=RiskKind.AMBIGUOUS, detail=entry["label_fr"]),
                 matched_text=pattern,
                 suggested_fix=entry.get("fix_fr", ""),
+                verified_article=entry.get("verified_article", ""),
             ))
 
     for entry in profile.get("asymmetric_patterns", []):
@@ -48,6 +53,7 @@ def score_clause(text: str, profile: dict[str, Any], language: Language) -> list
             findings.append(Finding(
                 flag=RiskFlag(kind=RiskKind.ASYMMETRIC, detail=entry["label_fr"]),
                 matched_text=pattern,
+                verified_article=entry.get("verified_article", ""),
             ))
 
     return findings

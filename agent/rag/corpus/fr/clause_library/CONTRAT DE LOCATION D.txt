@@ -8,7 +8,71 @@ Ci-après désignée la Locataire d'autre part,
 IL A ÉTÉ ARRÊTÉ ET CONVENU CE QUI SUIT:
 Article 1: Objet de la location
 Le bailleur donne en location en gérance libre au locataire, qui accepte, le local commercial sis à 16 BIS Avenue de la Liberté Menzah 5. Le local objet du présent contrat comprend une superficie brute d'environ 20 m2 avec un sanitaire.
-Article 2: Destination et usage
+Article 2: Destination et usage## Désignation du local loué
+Le bailleur donne à bail au preneur un local à usage commercial sis à [adresse complète], d'une superficie utile de [__] m², comprenant [description des pièces et dépendances], tel que le preneur déclare l'avoir vu et visité. Un plan et un descriptif des équipements sont annexés au présent contrat et en font partie intégrante.
+
+## Destination et usage du local
+Le local est exclusivement destiné à l'exercice de l'activité de [activité précise]. Le preneur ne pourra en modifier la destination sans l'accord écrit et préalable du bailleur. Toute activité non autorisée constitue un manquement au sens de la clause résolutoire.
+
+## Durée et prise d'effet
+Le présent bail est conclu pour une durée de [__] années, prenant effet le [date] pour se terminer le [date]. La prise d'effet est indépendante de la date de signature et n'est subordonnée qu'à la remise des clés, constatée par l'état des lieux d'entrée.
+
+## Renouvellement et reconduction
+À l'expiration de la durée initiale, le bail se renouvelle par périodes de [__] années, sauf dénonciation par l'une des parties notifiée par écrit avec accusé de réception au moins [__] mois avant le terme. La reconduction s'opère aux mêmes conditions, sous réserve de la clause de révision du loyer.
+
+## Loyer et modalités de paiement
+Le loyer est fixé à la somme de [montant en chiffres et en toutes lettres] dinars par mois, payable d'avance le [__] de chaque mois, par virement bancaire au compte n° [RIB] ouvert au nom du bailleur. Le paiement est réputé effectué à la date de crédit du compte du bailleur.
+
+## Révision du loyer
+Le loyer est révisé de plein droit chaque [__] à la date anniversaire de la prise d'effet du bail, par application d'un taux de [__] % par période, ou par indexation sur [indice de référence désigné]. À défaut d'indice publié à la date de révision, le dernier indice connu s'applique. Aucune révision ne peut excéder [__] % par période. La révision opère sans formalité ni mise en demeure.
+
+## Dépôt de garantie
+Le preneur verse à la signature un dépôt de garantie de [montant] dinars, équivalent à [__] mois de loyer hors charges, non productif d'intérêts. Ce dépôt ne peut en aucun cas être imputé sur les loyers, y compris ceux du dernier mois de location. Il est restitué au preneur dans un délai de [__] jours à compter de la restitution des clés et de l'établissement de l'état des lieux de sortie, déduction faite des sommes dues au titre des loyers, charges et réparations locatives, justificatifs à l'appui.
+
+## Charges, taxes et abonnements
+Le preneur supporte les charges suivantes : [énumération limitative — eau, électricité, télécommunications, quote-part de copropriété, taxe municipale]. Les abonnements aux fournisseurs sont souscrits au nom du preneur et à ses frais. Toute charge non énumérée au présent article demeure à la charge du bailleur.
+
+## État des lieux d'entrée et de sortie
+Un état des lieux contradictoire est dressé par écrit et signé des deux parties lors de la remise des clés, puis lors de leur restitution. À défaut d'état des lieux d'entrée, le preneur est réputé avoir reçu le local en bon état de réparations locatives. Chaque partie conserve un exemplaire signé, annexé au présent contrat.
+
+## Travaux et aménagements du preneur
+Le preneur ne peut effectuer aucun percement, démolition ni modification de la structure ou de la distribution du local sans autorisation écrite et préalable du bailleur. Les aménagements autorisés restent acquis au bailleur en fin de bail sans indemnité, sauf convention contraire écrite, le bailleur pouvant exiger la remise en état aux frais du preneur.
+
+## Entretien et réparations
+Le preneur assume l'entretien courant et les réparations locatives du local et de ses équipements. Le bailleur assume les grosses réparations, notamment celles affectant le gros œuvre, la toiture, les murs porteurs et les canalisations encastrées. Le preneur informe le bailleur sans délai de tout désordre relevant de ce dernier, sous peine de supporter l'aggravation du dommage résultant de son silence.
+
+## Assurances
+Le preneur souscrit et maintient pendant toute la durée du bail une police d'assurance couvrant les risques locatifs, l'incendie, le dégât des eaux et sa responsabilité civile d'exploitation. Il en justifie au bailleur à la prise d'effet du bail puis à chaque échéance annuelle, sur simple demande. Le défaut d'assurance constitue un manquement au sens de la clause résolutoire.
+
+## Sous-location et cession du bail
+Le preneur ne peut ni sous-louer tout ou partie du local, ni céder son droit au bail, ni mettre le local en gérance, sans l'accord écrit et préalable du bailleur. En cas de cession autorisée, le cédant demeure garant solidaire du paiement des loyers et de l'exécution des obligations du cessionnaire pendant [__] mois à compter de la cession.
+
+## Clause résolutoire
+À défaut de paiement d'un seul terme de loyer, de charges ou du dépôt de garantie à son échéance, ou d'inexécution de l'une quelconque des obligations du présent contrat, le bail sera résilié de plein droit [__] jours après une mise en demeure par écrit avec accusé de réception demeurée sans effet, sans qu'il soit besoin d'aucune formalité judiciaire. La mise en demeure mentionne expressément la présente clause.
+
+## Résiliation anticipée par le preneur
+Le preneur peut mettre fin au bail à tout moment moyennant un préavis écrit de [__] mois notifié avec accusé de réception. Le préavis court à compter de la réception de la notification. Les loyers demeurent dus jusqu'au terme du préavis, même en cas de libération anticipée des lieux.
+
+## Obligation de jouissance paisible
+Le bailleur garantit au preneur la jouissance paisible du local pendant toute la durée du bail et s'oblige à ne rien faire qui en trouble l'usage. Il garantit le preneur contre les vices cachés du local de nature à en empêcher l'usage convenu.
+
+## Vente du local en cours de bail
+La vente du local ne met pas fin au bail. L'acquéreur est subrogé dans les droits et obligations du bailleur et tenu d'en respecter les termes jusqu'à son terme. Le bailleur notifie au preneur l'identité et l'adresse de l'acquéreur dans un délai de [__] jours à compter de la vente.
+
+## Restitution du local
+En fin de bail, le preneur restitue le local vidé de tout occupant et de tout bien, en bon état d'entretien, conforme à l'état des lieux d'entrée sous réserve de l'usure normale. La restitution des clés s'effectue contre décharge écrite. Tout retard dans la restitution donne lieu à une indemnité d'occupation égale à [__] fois le loyer journalier.
+
+## Frais d'enregistrement et de timbre
+Les frais d'enregistrement, de timbre et d'établissement du présent contrat sont à la charge de [partie désignée]. La partie qui en supporte la charge justifie de l'accomplissement de la formalité d'enregistrement dans un délai de [__] jours à compter de la signature.
+
+## Élection de domicile et juridiction compétente
+Pour l'exécution du présent contrat, les parties font élection de domicile aux adresses indiquées en tête. Tout changement d'adresse doit être notifié à l'autre partie par écrit, à défaut de quoi les notifications faites à l'adresse initiale sont réputées valablement reçues. Tout litige relatif à la formation, l'interprétation ou l'exécution du présent contrat relève de la compétence exclusive des tribunaux de [ressort].
+
+## Force majeure
+Aucune des parties n'est responsable de l'inexécution de ses obligations lorsque celle-ci résulte d'un événement de force majeure, présentant un caractère imprévisible, irrésistible et extérieur. La partie empêchée en informe l'autre par écrit dans un délai de [__] jours. Si l'empêchement excède [__] mois, chaque partie peut résilier le bail par notification écrite, sans indemnité de part ni d'autre.
+
+## Intégralité et modification du contrat
+Le présent contrat et ses annexes expriment l'intégralité de l'accord des parties et annulent tout accord antérieur portant sur le même objet. Toute modification doit faire l'objet d'un avenant écrit et signé des deux parties. La tolérance par l'une des parties d'un manquement de l'autre ne vaut pas renonciation à s'en prévaloir ultérieurement.
 Le local, à usage commercial, est destiné à exercer l'activité de Boutique de vente de Fruits Secs (45) pour une durée de 2 ans, renouvelable, aux conditions et moyennant le loyer ci-après indiqués.
 Article 3: Loyer - Paiement - Augmentation
 Cette location est consentie moyennant un loyer mensuel payable d'avance de Mille Sept Cents Dinars (1700 DT). Le locataire s'engage à fournir une caution équivalente à deux mois de loyer, soit Trois Mille Quatre Cents Dinars (3400 DT). Le paiement s'effectuera chaque début du mois et une copie du virement sera adressée au bailleur.

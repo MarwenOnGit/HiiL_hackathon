@@ -49,18 +49,62 @@ def run_hardening(retriever=None, chain=None):
 class NeverFabricateLaw(unittest.TestCase):
     """Invariant 7, from three angles."""
 
-    def test_the_profile_contains_no_legal_reference(self):
-        """The checklist may say a clause is missing; only retrieval may say
-        what the law makes of that."""
-        # Comments explain the rule and legitimately contain the word
-        # "article"; only the data may not cite law.
+    def test_the_profile_asserts_no_legal_content(self):
+        """The checklist may say a clause is missing; only the corpus may say
+        what the law makes of that.
+
+        A `verified_article:` pin is the one permitted exception, and it is a
+        different kind of statement: it NAMES an article for retrieval to fetch,
+        and the text still comes from the corpus. It never carries legal wording
+        of its own, so a wrong pin is visible to anyone who reads the excerpt.
+        """
+        lines = (ROOT / "config" / "profiles" / "supply.yaml").read_text(
+            encoding="utf-8"
+        ).splitlines()
         raw = "\n".join(
-            line for line in
-            (ROOT / "config" / "profiles" / "supply.yaml").read_text(encoding="utf-8").splitlines()
+            line for line in lines
             if not line.lstrip().startswith("#")
+            and not line.lstrip().startswith("verified_article:")
         ).lower()
         for banned in (" coc ", "article ", "art.", "ohada", "code des obligations"):
-            self.assertNotIn(banned, raw, f"profile cites law: {banned!r}")
+            self.assertNotIn(banned, raw, f"profile asserts law: {banned!r}")
+
+    def test_every_pinned_article_resolves_in_the_corpus(self):
+        """A pin that does not resolve degrades silently to lexical search,
+        which is exactly what pinning exists to avoid. Fail loudly instead.
+
+        Skipped when no corpus is loaded — an empty corpus is a valid state.
+        """
+        import yaml
+        from rag import InMemoryIndex, Retriever
+        from runtime import load_corpus
+        from core.taxonomy import CorpusType, Language
+
+        index = InMemoryIndex()
+        load_corpus(index)
+        if len(index) == 0:
+            self.skipTest("no corpus loaded; pins cannot be checked")
+
+        retriever = Retriever(index)
+        profile = yaml.safe_load(
+            (ROOT / "config" / "profiles" / "supply.yaml").read_text(encoding="utf-8")
+        )
+        pins = [
+            entry["verified_article"]
+            for group in ("ambiguous_terms", "asymmetric_patterns", "required_clauses")
+            for entry in profile.get(group, [])
+            if entry.get("verified_article")
+        ]
+        self.assertTrue(pins, "no pins configured")
+        for ref in pins:
+            hit = retriever.by_article_ref(
+                ref, language=Language.FR,
+                corpus_types=[CorpusType.NORMATIVE, CorpusType.CLAUSE_LIBRARY],
+            )
+            self.assertIsNotNone(
+                hit, f"pinned {ref!r} is not in the corpus — the finding would "
+                     "silently fall back to lexical search",
+            )
 
     def test_every_redline_is_ungrounded_when_the_corpus_is_empty(self):
         report = run_hardening()

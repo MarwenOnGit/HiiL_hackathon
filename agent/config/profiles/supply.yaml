@@ -121,6 +121,11 @@ ambiguous_terms:
   - pattern_fr: "delai raisonnable"
     pattern_ar: "أجل معقول"
     label_fr: "« delai raisonnable » n'a pas de valeur chiffree"
+    # Verified by reading art. 597: "La delivrance doit se faire aussitot
+    # apres la conclusion du contrat, sauf les delais exiges par la nature
+    # de la chose vendue ou par l'usage." That is the default a vague
+    # delivery term falls back onto, which is exactly the risk.
+    verified_article: "art. 597"
     fix_fr: "Remplacer par un nombre de jours ouvrables a compter d'un evenement precis."
   - pattern_fr: "dans les meilleurs delais"
     pattern_ar: "في أقرب الآجال"
@@ -129,10 +134,18 @@ ambiguous_terms:
   - pattern_fr: "qualite convenue"
     pattern_ar: "الجودة المتفق عليها"
     label_fr: "« qualite convenue » ne renvoie a aucun standard verifiable"
+    # Verified by reading art. 668: the seller is not liable for apparent
+    # defects the buyer could easily have noticed — which is precisely why
+    # an inspection-on-receipt standard matters.
+    verified_article: "art. 668"
     fix_fr: "Renvoyer a une norme, un echantillon de reference ou des specifications annexees."
   - pattern_fr: "prix du marche"
     pattern_ar: "سعر السوق"
     label_fr: "« prix du marche » n'est pas un prix determinable sans methode"
+    # Verified by reading art. 579: "Le prix de la vente doit etre determine…"
+    # and it sets the conditions under which a market-price reference is
+    # permissible. Directly governing.
+    verified_article: "art. 579"
     fix_fr: "Fixer le prix, ou definir un indice et une date de releve."
   - pattern_fr: "si possible"
     pattern_ar: "إن أمكن"
@@ -145,6 +158,10 @@ ambiguous_terms:
   - pattern_fr: "quantite approximative"
     pattern_ar: "كمية تقريبية"
     label_fr: "une quantite approximative empeche de constater une livraison incomplete"
+    # Verified by reading art. 258: for fungible things the debtor owes the
+    # quantity, quality and species "portees dans l'obligation" — so an
+    # approximate quantity leaves nothing determinate to owe.
+    verified_article: "art. 258"
     fix_fr: "Indiquer la quantite exacte et la tolerance acceptee."
 
 # One-sided constructions. Reported for awareness and NEVER silently rewritten

@@ -18,6 +18,8 @@ from pydantic import BaseModel
 from blockchain_client.client import ChainError
 from chat_assistant import answer_question
 from config import load_profile
+from core.hashing import content_hash
+from core.identity import IDENTITY_MODEL, derive_pseudonym
 from core.schemas import Party
 from core.taxonomy import DocType, ReviewStatus
 from core.version_manager import add_version
@@ -31,8 +33,10 @@ from runtime import RUNTIME
 app = FastAPI(title="Insaf agent service", version="3.0")
 
 DEFAULT_PARTIES = [
-    Party("p_buyer", "msme_owner", "Atelier Trabelsi", "pseudo_buyer"),
-    Party("p_supplier", "counterparty", "Bois du Nord", "pseudo_supplier"),
+    Party("p_buyer", "msme_owner", "Atelier Trabelsi",
+          derive_pseudonym("p_buyer")),
+    Party("p_supplier", "counterparty", "Bois du Nord",
+          derive_pseudonym("p_supplier")),
 ]
 
 
@@ -45,6 +49,9 @@ def health() -> dict[str, Any]:
         "corpus_breakdown": RUNTIME.corpus_counts,
         # Stated plainly so the UI never implies findings were legally checked.
         "grounding_available": RUNTIME.corpus_size > 0,
+        # Stated so nothing downstream has to guess how much a party
+        # identifier is worth. It is pseudonymous, not authenticated.
+        "identity": IDENTITY_MODEL,
     }
 
 
@@ -165,11 +172,9 @@ def sign(contract_id: str, body: SignBody) -> dict[str, Any]:
     contract = RUNTIME.store.get(contract_id)
     parent = contract.versions[-1]
 
-    import copy, hashlib
+    import copy
     clauses = [copy.deepcopy(c) for c in parent.clauses]
-    text_hash = "0x" + hashlib.sha256(
-        (parent.text_hash + contract_id + "signed").encode()
-    ).hexdigest()
+    text_hash = content_hash(parent.text_hash + contract_id + "signed")
 
     signed = add_version(
         contract,

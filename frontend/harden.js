@@ -145,7 +145,7 @@ function renderFindings(report) {
     // coincidence instead of trusting a confident-looking citation.
     const basis = r.grounded
       ? `<div class="redline-basis basis-cited">
-           <strong>Extraits retrouvés</strong> — à vérifier :
+           <strong>${r.verified_pin ? "Article vérifié" : "Extraits retrouvés — à vérifier"}</strong> :
            ${r.legal_basis.map((b) => `<span class="basis-ref">${esc(b.source_doc)} ${esc(b.article_ref)}</span>`).join(", ")}
            <div style="margin-top:5px">${esc(r.legal_basis[0].excerpt.slice(0, 220))}…</div>
            ${r.legal_basis[0].matched_terms && r.legal_basis[0].matched_terms.length

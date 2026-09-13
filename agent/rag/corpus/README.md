@@ -60,3 +60,20 @@ cd agent && python3 -m scripts.build_index
 Prints what it indexed per language and corpus type. Run it again after adding
 files; the index is built in-process at service start, so restarting the agent
 service is enough.
+
+## Scope: French only, deliberately
+
+`ar/` is empty on purpose and should stay that way until there is a real Arabic
+corpus to put in it. **Half-populating it is worse than leaving it empty.** A
+thin Arabic corpus produces confident answers from a base too small to support
+them; an empty one produces an honest "no legal basis retrieved", which is a
+correct result. State the French-only scope out loud when demonstrating.
+
+`fr/evaluative/` currently holds a single doctrine source, so BATNA reasoning
+rests on one author's view. Two or three more would fix that. Low urgency —
+after the demo.
+
+`fr/clause_library/` splits on `##` headings. A plain `.txt` without them
+indexes as **zero chunks** and will silently never be retrieved. Check
+`python3 scripts/build_index.py` output after adding anything: a folder showing
+`0 chunks` means the file is there but invisible.

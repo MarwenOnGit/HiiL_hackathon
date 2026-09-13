@@ -169,6 +169,31 @@ class Retriever:
     def __init__(self, index: VectorIndex) -> None:
         self._index = index
 
+    def by_article_ref(
+        self, article_ref: str, *, language: Language, corpus_types: list[CorpusType]
+    ) -> Hit | None:
+        """Fetch one article by reference — for hand-verified pins.
+
+        Lexical search is good at "shares vocabulary" and bad at "governs this
+        defect", which is why a human-verified anchor beats it for the handful
+        of findings that matter most. The pin names the article; the TEXT still
+        comes from the corpus, so nothing is fabricated and a wrong pin is
+        visible the moment someone reads the excerpt.
+        """
+        wanted = article_ref.strip().lower()
+        for chunk in getattr(self._index, "_chunks", []):
+            if chunk.language is not language or chunk.corpus_type not in corpus_types:
+                continue
+            ref = chunk.article_ref.split(" (")[0].strip().lower()
+            if ref == wanted:
+                return Hit(
+                    text=chunk.text, source_doc=chunk.source_doc,
+                    article_ref=chunk.article_ref, corpus_type=chunk.corpus_type,
+                    language=chunk.language, score=float("inf"),
+                    matched_terms=["(vérifié à la main)"],
+                )
+        return None
+
     def _signal_terms(
         self, terms: set[str], language: Language, corpus_types: list[CorpusType]
     ) -> set[str]:

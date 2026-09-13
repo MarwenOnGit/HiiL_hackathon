@@ -16,9 +16,9 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from core.schemas import Clause, LegalRef, RiskFlag
-from core.taxonomy import Language, RiskKind
+from core.taxonomy import CorpusType, Language, RiskKind
 
-from rag.retriever import Mode, NoLegalBasis, Retriever
+from rag.retriever import Mode, NoLegalBasis, RetrievalResult, Retriever
 
 from .risk_scorer import Finding
 
@@ -32,6 +32,10 @@ class Redline:
     risk_kind: RiskKind
     legal_basis: list[LegalRef] = field(default_factory=list)
     matched_terms: list[list[str]] = field(default_factory=list)
+    # True when the article was named by a human who read it, rather than
+    # found by lexical search. The UI says which, because they are different
+    # kinds of claim.
+    verified_pin: bool = False
     no_legal_basis: NoLegalBasis | None = None
 
     @property
@@ -60,7 +64,11 @@ class Redline:
                 }
                 for r, terms in zip(self.legal_basis, self.matched_terms or [[]] * len(self.legal_basis))
             ],
+            "verified_pin": self.verified_pin,
             "verification_note": (
+                "Article vérifié à la main : quelqu'un a lu ce texte et confirmé "
+                "qu'il régit ce point. L'extrait provient du corpus."
+                if self.verified_pin else
                 "Extraits retrouvés par recherche lexicale dans le corpus. "
                 "Ils partagent le vocabulaire de la clause — ce n'est pas une "
                 "confirmation qu'ils la régissent. À vérifier avant tout usage."
@@ -97,7 +105,27 @@ def propose_redlines(
         # noise. Query with the matched French term plus the requirement's own
         # French label.
         query = f"{finding.matched_text} {_label_for(clause.type, profile)}".strip()
-        result = retriever.retrieve(query, mode=Mode.NORMATIVE, language=clause.language)
+
+        # A hand-verified anchor wins over search. Lexical retrieval answers
+        # "shares vocabulary with", not "governs" — an audit of the demo path
+        # caught it citing a warehouse-register article for a vague quantity
+        # term and an offer-by-correspondence article for a vague delivery
+        # term. Where a human has read the article and confirmed it applies,
+        # use that. The excerpt still comes from the corpus, so a wrong pin is
+        # visible to anyone who reads it.
+        pinned = None
+        if finding.verified_article:
+            pinned = retriever.by_article_ref(
+                finding.verified_article,
+                language=clause.language,
+                corpus_types=[CorpusType.NORMATIVE, CorpusType.CLAUSE_LIBRARY],
+            )
+        result = (
+            RetrievalResult(query=query, mode=Mode.NORMATIVE,
+                            language=clause.language, hits=[pinned])
+            if pinned is not None
+            else retriever.retrieve(query, mode=Mode.NORMATIVE, language=clause.language)
+        )
 
         proposed = finding.suggested_fix or _default_fix(finding, clause.language)
         rationale = finding.flag.detail
@@ -111,6 +139,7 @@ def propose_redlines(
                 risk_kind=finding.flag.kind,
                 legal_basis=result.legal_refs(),
                 matched_terms=[h.matched_terms for h in result.hits],
+                verified_pin=pinned is not None,
             ))
         else:
             redlines.append(Redline(

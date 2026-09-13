@@ -1,0 +1,22 @@
+# Ownership. The point is having a written answer, not which name is in it.
+#
+# Solidity and the deployment belong to the chain owner: they run the node, they
+# hold the ABI, and a redeploy is theirs to schedule. The agent layer CONSUMES
+# the ABI and never edits Solidity — a change it needs goes through the request
+# document below, not through a commit.
+#
+# See docs/cross-team/2026-09-12-chain-interface-v3-request.md
+
+/contracts/                 @blockchain-owner
+/backend/src/chain/         @blockchain-owner
+/backend/src/services/chainService.js  @blockchain-owner
+
+# The agent layer and its seam.
+/agent/                     @agent-owner
+/backend/src/routes/agent.js  @agent-owner
+/web/app/api/agent/         @agent-owner
+
+# Shared: changing either of these breaks hash agreement across the seam, so
+# both owners review.
+/agent/core/hashing.py                 @agent-owner @blockchain-owner
+/backend/src/services/contentHash.js   @agent-owner @blockchain-owner

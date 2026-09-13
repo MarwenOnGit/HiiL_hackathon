@@ -303,3 +303,30 @@ contracts pointing at anchors that no longer existed and verification failed for
 that was perfectly intact. A real chain survives a restart; a fake that does not
 misrepresents the thing it stands in for. Writes are atomic, and `/admin/reset` clears
 it.
+
+**22. The content fingerprint is Keccak-256 over a canonical byte form.** Resolved in
+favour of the Node/Solidity side: `keccak256` is the cheap builtin and the whole ethers
+surface assumes it, so Python conformed. Implemented dependency-free in
+`agent/core/hashing.py` (no keccak library is installed and pip is externally managed)
+and verified against the published vectors. The canonical form — NFC, CRLF→LF, trailing
+whitespace stripped per line, outer blank space stripped, UTF-8 — is pinned identically
+in `backend/src/services/contentHash.js`, because two systems disagree about "the same
+document" over encoding as easily as over the algorithm. Test vectors are published in
+the cross-team request and pinned by a test, so a stale document fails the suite.
+
+**23. Party identity is deliberately stubbed, and says so.** `agent/core/identity.py`
+derives a salted Keccak-256 pseudonym from the internal party record, anchored as data
+rather than as a signer: stable, distinct, no key management, and **no
+authentication** — the relayer still submits everything. `GET /health` reports this as a
+structured `identity` block so no UI has to guess what an identifier is worth. Real
+per-party signing means custody, key recovery and onboarding; that is a project, not a
+task.
+
+**24. Findings may pin a hand-verified article, and this is not cheating.** An audit of
+the demo path found lexical retrieval citing a warehouse-register article for a vague
+quantity term and an offer-by-correspondence article for a vague delivery term — 2 of 9
+citations held. Retrieval answers "shares vocabulary with", not "governs". A
+`verified_article` pin in the profile names an article a human read and confirmed; the
+excerpt still comes from the corpus, so a wrong pin is visible to anyone who reads it.
+The UI labels pinned and retrieved citations differently, and a test fails if a pin no
+longer resolves rather than letting it degrade silently to search.
