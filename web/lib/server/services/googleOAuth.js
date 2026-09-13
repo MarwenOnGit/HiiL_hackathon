@@ -24,9 +24,9 @@ function hasCredentials() {
 
 // The redirect MUST match Google's registered callback exactly (by value), so
 // it is built from PUBLIC_BASE_URL — the origin the demo snippet points at —
-// and delivered through the Next proxy so the browser never sees :4000.
+// and delivered same-origin so the browser never sees a different port.
 function callbackUrl() {
-  const base = process.env.PUBLIC_BASE_URL || "http://localhost:4000";
+  const base = process.env.PUBLIC_BASE_URL || "http://localhost:3000";
   return `${base}/api/auth/callback`;
 }
 

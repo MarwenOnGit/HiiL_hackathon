@@ -7,7 +7,7 @@ import insaf from "@/lib/server/services/insaf";
 // Stands in for "Agent 1 finished ingesting and extracting" until the real
 // RAG/extraction agent-service exists. Same output shape either way, so this
 // route can be swapped for a real call later without touching anything
-// downstream (mirrors backend/src/routes/relationships.js).
+// downstream — same shape whether it is this canned data or a real agent later.
 export async function POST() {
   const relationship: any = demoRelationship();
   relationship.raw_thread_hash = ethers.keccak256(

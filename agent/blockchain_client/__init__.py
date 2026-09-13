@@ -2,7 +2,7 @@
 an anchor back into verified terms.
 
 Deliberately independent of the colleague's Node `ChainService`. Nothing here
-touches `contracts/` or `backend/`. The agent layer develops against the fake
+touches `contracts/` or the Next app. The agent layer develops against the fake
 until the on-chain schema is renegotiated, so chain readiness never blocks
 agent work.
 """

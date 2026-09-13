@@ -14,7 +14,7 @@ that has to exist on a demo machine.
 **Agreeing on the algorithm is only half of it.** Two systems hashing "the same
 document" disagree just as easily over encoding, line endings and trailing
 whitespace as over the digest function. `canonical_bytes` pins all of that, and
-`backend/src/services/contentHash.js` implements the identical rules on the Node
+`web/lib/server/services/contentHash.js` implements the identical rules on the Node
 side. A known test vector lives in the cross-team request document so the chain
 owner can confirm agreement without coordinating with anyone.
 """

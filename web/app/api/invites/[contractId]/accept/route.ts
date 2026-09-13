@@ -1,7 +1,7 @@
 // Guest-side acceptance: checks the one-time code on a pending invite, then —
 // for a wizard contract — creates the agreement on-chain (partyA signs;
 // acceptance + code captured consent off-chain). Mirrors
-// backend/src/routes/invites.js POST /:token/accept exactly.
+// POST /:token/accept — second-party joins an invitation here.
 
 import { NextRequest, NextResponse } from "next/server";
 import { ethers } from "ethers";

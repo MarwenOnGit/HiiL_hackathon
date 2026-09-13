@@ -2,7 +2,7 @@
 # Resets the demo to its seeded state. One command, safe to re-run.
 #
 # Clears the agent service's contract store and in-memory chain, then rebuilds
-# the seeded dataset. The Node backend's own in-memory state is wiped by
+# the seeded dataset. The Next.js app's own in-memory state is wiped by
 # restarting it, which start.sh does anyway.
 set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

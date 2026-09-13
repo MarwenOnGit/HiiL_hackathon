@@ -29,19 +29,19 @@ cd HiiL_hackathon
 ./start.sh mock
 ```
 
-That's it — `start.sh` runs `npm install` in `contracts/` and `backend/`
-automatically (only if `node_modules` is missing), creates `backend/.env`
-from `backend/.env.example` on first run, deploys the contract, and starts
-the backend at `http://localhost:4000` (which also serves the frontend).
+That's it — `start.sh` runs `npm install` in `contracts/` and `web/`
+automatically (only if `node_modules` is missing), creates `web/.env`
+from `web/.env.example` on first run, deploys the contract, and starts the
+Next.js app (the entire UI + API) at `http://localhost:3000`.
 Requires Node.js 18+ and npm on `PATH`; nothing else needs to be installed
 by hand.
 
 **What's intentionally not in git** (see `.gitignore`): `node_modules/` in
-both `backend/` and `contracts/` (run `npm install`, don't commit it),
-`backend/.env` (generated from `.env.example` — holds only well-known
+both `web/` and `contracts/` (run `npm install`, don't commit it),
+`web/.env` (generated from `.env.example` — holds only well-known
 public Hardhat test keys, never real secrets), `contracts/artifacts/` and
 `contracts/cache/` (Hardhat build output), and
-`backend/src/chain/deployment.json` (the deployed contract address —
+`contracts/deployment.json` (the deployed contract address —
 regenerated per machine every time you run a local chain, so it's never
 shared between teammates). If you pull changes and something acts stale,
 re-run `./start.sh` — it regenerates all of the above.
@@ -98,10 +98,9 @@ npm start
 
 **3. Open the app**
 
-Go to `http://localhost:4000` — the backend serves the frontend directly.
-Click "Upload a WhatsApp export" (it loads the canned demo relationship),
-review it, generate the contract, anchor it, confirm from both sides, check
-the dashboard.
+Go to `http://localhost:3000` — the Next.js dashboard. Click "Upload a
+WhatsApp export" (it loads the canned demo relationship), review it, generate
+the contract, anchor it, confirm from both sides, check the dashboard.
 
 ## Where your teammate's real agents plug in
 
@@ -127,15 +126,15 @@ setup again.
 ## Running the whole thing (v3)
 
 ```bash
-./start.sh mock          # chain fake + agent service + backend on :4000
+./start.sh mock          # chain fake + agent service + the whole app on :3000
 cd agent && python3 scripts/seed_demo.py    # reproducible demo dataset
 ./reset.sh               # back to the seeded state, any time
-cd agent && python3 scripts/smoke_test.py   # 28 checks over the real stack
 ```
 
-Open **http://localhost:4000/harden.html** for the v3 flow (analyse → harden →
-sign → resolve a dispute), or http://localhost:4000 for the original anchoring
-wizard. Both run from the same backend.
+Open **http://localhost:3000/harden** for the v3 flow (analyse → harden →
+sign → resolve a dispute), or http://localhost:3000 for the dashboard/account.
+The Next.js app on :3000 is the entire UI and API — there is no separate
+backend port any more.
 
 `./start.sh` with no argument uses a real local Hardhat chain instead of the
 fake. The agent service is optional: if it is down, anchoring and counterparty

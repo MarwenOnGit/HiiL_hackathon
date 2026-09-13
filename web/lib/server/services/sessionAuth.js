@@ -1,4 +1,4 @@
-// Session-based auth for the v3 UI. The backend is the single owner of
+// Session-based auth for the v3 UI. This app is the single owner of
 // identity: MSME users authenticate through Google OAuth, guests through the
 // confirmation token that already confirmed their one contract. All of it is
 // packaged as one opaque httpOnly cookie; the Next frontend never sees (or

@@ -1,4 +1,4 @@
-// The one place the backend asks "whose contract is this, is it signed, does
+// The one place the app asks "whose contract is this, is it signed, does
 // it have a thread" — across BOTH contract worlds:
 //
 //   wizard   — contracts minted by /api/contracts/generate, stored in db.js

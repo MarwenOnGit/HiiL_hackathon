@@ -1,8 +1,8 @@
 # Chain interface change request — v1 registry → v3 event log
 
-**To:** whoever owns `contracts/` and `backend/src/services/chainService.js`
+**To:** whoever owns `contracts/` and `web/lib/server/services/chainService.js`
 **From:** the agent-layer work (`agent/`)
-**Status:** request for review. **Nothing in `contracts/` or `backend/` has been
+**Status:** request for review. **Nothing in `contracts/` or the Next app has been
 touched.** The agent layer runs against an in-memory fake
 (`agent/blockchain_client/fake.py`) and can keep doing so indefinitely, so
 nothing here is urgent for *us* — but the live demo needs a real chain, so it
@@ -106,7 +106,7 @@ this is recorded so both sides can prove agreement.
 disagree over encoding, line endings and trailing whitespace just as easily as
 over the digest function, and those disagreements are invisible in the text.
 The canonical byte form is pinned on both sides — `agent/core/hashing.py`
-(`canonical_bytes`) and `backend/src/services/contentHash.js` (`canonicalText`):
+(`canonical_bytes`) and `web/lib/server/services/contentHash.js` (`canonicalText`):
 
 1. Unicode **NFC**
 2. `\r\n` and lone `\r` become `\n`

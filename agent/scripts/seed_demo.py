@@ -100,7 +100,7 @@ def main() -> int:
           f"({dispute['governing_version']['doc_type']})  ledger={ledger}")
 
     print()
-    print(f"Seeded. Open http://localhost:4000/harden.html  (contract {CONTRACT_ID})")
+    print(f"Seeded. Open http://localhost:3000/harden  (contract {CONTRACT_ID})")
     return 0
 
 

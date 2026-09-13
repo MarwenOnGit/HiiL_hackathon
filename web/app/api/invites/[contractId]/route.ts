@@ -1,6 +1,6 @@
 // Invitation flow for the v3 UI — the successor to the public /confirm pages.
-// Mirrors backend/src/routes/invites.js: GET = public token lookup, POST =
-// owner mint (requireMsme + ownership gate). Same shapes out.
+// GET = public token lookup, POST = owner mint (requireMsme + ownership gate).
+// Same shapes out.
 
 import { NextRequest, NextResponse } from "next/server";
 import db from "@/lib/server/db";
@@ -9,7 +9,7 @@ import confirmationTokens from "@/lib/server/services/confirmationTokens";
 import { authFromRequest, msmeRequiredResponse } from "@/lib/server/session";
 
 function frontendOrigin() {
-  return process.env.PUBLIC_BASE_URL || "http://localhost:4000";
+  return process.env.PUBLIC_BASE_URL || "http://localhost:3000";
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ contractId: string }> }) {

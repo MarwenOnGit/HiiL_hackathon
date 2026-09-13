@@ -1,4 +1,4 @@
-// Per-agreement discussion threads (mirrors backend/src/routes/threads.js).
+// Per-agreement discussion threads — the meat is in lib/server/db.js + threadAuth.js.
 // Only for agreements already executed; owner by ownership, counterparty by
 // confirmed token. Messages are off-chain content — nothing here touches the
 // chain directly.

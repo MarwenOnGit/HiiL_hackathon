@@ -1,5 +1,5 @@
 // Proxy to the Python agent service (ARCHITECTURE.md Section 3 — "the seam"),
-// ported from backend/src/routes/agent.js onto an App Router catch-all.
+// App Router catch-all proxy to the Python agent service on :5001.
 // Every call crosses a process boundary to a service that can be slow,
 // restarting, or absent; each request carries a timeout and a graceful JSON
 // failure path — never a hung request, never a stack trace.

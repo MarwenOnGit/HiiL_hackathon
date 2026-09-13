@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Starts the whole Insaf prototype: local chain, contract deploy, backend
-# (which also serves the frontend). Run `./start.sh mock` to skip the chain
-# entirely and demo the full flow with faked chain calls instead.
+# Starts the whole Insaf prototype: local chain, agent service, and the Next.js
+# app (which is the entire UI + API on :3000). Run `./start.sh mock` to skip the
+# chain entirely and demo the full flow with faked chain calls instead.
 #
 # Ctrl+C stops everything this script started.
 
@@ -9,7 +9,8 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONTRACTS_DIR="$ROOT_DIR/contracts"
-BACKEND_DIR="$ROOT_DIR/backend"
+WEB_DIR="$ROOT_DIR/web"
+WEB_PUBLIC_URL="http://localhost:3000"
 RPC_URL="http://127.0.0.1:8545"
 
 MODE="${1:-real}"
@@ -60,17 +61,17 @@ chain_is_up() {
     "$RPC_URL"
 }
 
-ensure_backend_env() {
-  if [[ ! -f "$BACKEND_DIR/.env" ]]; then
-    log "Creating backend/.env from .env.example…"
-    cp "$BACKEND_DIR/.env.example" "$BACKEND_DIR/.env"
+ensure_web_env() {
+  if [[ ! -f "$WEB_DIR/.env" ]]; then
+    log "Creating web/.env from web/.env.example…"
+    cp "$WEB_DIR/.env.example" "$WEB_DIR/.env"
   fi
 }
 
 set_env_var() {
-  # set_env_var KEY VALUE — replaces an existing KEY=... line in backend/.env,
+  # set_env_var KEY VALUE — replaces an existing KEY=... line in web/.env,
   # or appends it if the key isn't there yet.
-  local key="$1" value="$2" file="$BACKEND_DIR/.env"
+  local key="$1" value="$2" file="$WEB_DIR/.env"
   if grep -q "^${key}=" "$file"; then
     sed -i "s#^${key}=.*#${key}=${value}#" "$file"
   else
@@ -78,7 +79,7 @@ set_env_var() {
   fi
 }
 
-ensure_backend_env
+ensure_web_env
 
 if [[ "$MODE" == "mock" ]]; then
   log "Mock mode — skipping the local chain entirely."
@@ -105,7 +106,7 @@ else
   log "Deploying MSMEContractRegistry…"
   (cd "$CONTRACTS_DIR" && npx hardhat run scripts/deploy.js --network localhost)
 
-  DEPLOYMENT_FILE="$BACKEND_DIR/src/chain/deployment.json"
+  DEPLOYMENT_FILE="$ROOT_DIR/contracts/deployment.json"
   [[ -f "$DEPLOYMENT_FILE" ]] || die "Deploy script didn't produce $DEPLOYMENT_FILE"
   CONTRACT_ADDRESS="$(node -e "console.log(require('$DEPLOYMENT_FILE').address)")"
   log "Deployed at $CONTRACT_ADDRESS"
@@ -115,15 +116,9 @@ else
   set_env_var RPC_URL "$RPC_URL"
 fi
 
-install_if_needed "$BACKEND_DIR"
-
-# --- v3 dashboard (Next.js) --------------------------------------------------
-# The one-and-only login surface on :3000. Rewrites /api/* to the backend, so
-# invite links and OAuth callbacks can point at this origin regardless of where
-# the legacy app lives. PUBLIC_BASE_URL above lets the backend build the right
-# URLs; here we just make sure it matches the Next port.
-WEB_DIR="$ROOT_DIR/web"
-WEB_PUBLIC_URL="http://localhost:3000"
+# --- Next.js app (:3000) — the one-and-only login surface ---------------------
+# The whole UI and API live here; invite links and OAuth callbacks point at this
+# origin. PUBLIC_BASE_URL is set here so the app builds the right URLs.
 set_env_var PUBLIC_BASE_URL "$WEB_PUBLIC_URL"
 if [[ -d "$WEB_DIR" ]]; then
   install_if_needed "$WEB_DIR"
@@ -147,12 +142,22 @@ if [[ -d "$WEB_DIR" ]]; then
 fi
 
 # --- Agent service (v3 analysis layer, ARCHITECTURE.md Section 3) -------------
-# The backend degrades gracefully without it: anchoring and confirmation keep
+# The app degrades gracefully without it: anchoring and confirmation keep
 # working and the UI says analysis is unavailable. So a failure to start here is
 # a warning, never a reason to abort the demo.
 AGENT_DIR="$ROOT_DIR/agent"
-if [[ -d "$AGENT_DIR" ]] && command -v python3 >/dev/null 2>&1; then
-  if python3 -c "import fastapi, uvicorn" >/dev/null 2>&1; then
+AGENT_PY=""
+if [[ -d "$AGENT_DIR" ]]; then
+  # Prefer the agent's own venv (this system's system python3 has no uvicorn);
+  # fall back to whatever python3 can actually run the service.
+  for candidate in "$AGENT_DIR/.venv/bin/python" "$(command -v python3)"; do
+    if [[ -n "$candidate" ]] && "$candidate" -c "import fastapi, uvicorn" >/dev/null 2>&1; then
+      AGENT_PY="$candidate"
+      break
+    fi
+  done
+fi
+if [[ -d "$AGENT_DIR" && -n "$AGENT_PY" ]]; then
     if curl -s -o /dev/null -m 2 "http://127.0.0.1:${AGENT_PORT}/health"; then
       log "An agent service is already answering on port ${AGENT_PORT} — reusing it."
     else
@@ -164,7 +169,7 @@ if [[ -d "$AGENT_DIR" ]] && command -v python3 >/dev/null 2>&1; then
         cd "$AGENT_DIR"
         attempts=0
         while [[ $attempts -lt 20 ]]; do
-          python3 -m uvicorn service:app \
+          "$AGENT_PY" -m uvicorn service:app \
             --host 127.0.0.1 --port "$AGENT_PORT" --log-level warning \
             >> "$ROOT_DIR/agent-service.log" 2>&1
           status=$?
@@ -187,12 +192,14 @@ if [[ -d "$AGENT_DIR" ]] && command -v python3 >/dev/null 2>&1; then
         log "Agent service didn't come up — check agent-service.log. Continuing without it."
       fi
     fi
-  else
-    log "python3 is present but fastapi/uvicorn are not — skipping the agent service."
-  fi
 fi
 
-log "Starting backend on http://localhost:4000 (serves the legacy frontend too)…"
 log "Dashboard on http://localhost:3000 — sign in there."
 log "Press Ctrl+C to stop everything."
-(cd "$BACKEND_DIR" && exec npm start)
+if [[ -n "$WEB_PID" ]]; then
+  # Hold the script open on the dashboard we started, so Ctrl+C runs cleanup.
+  wait "$WEB_PID"
+else
+  # Reused an already-running dashboard — keep the script alive anyway.
+  sleep infinity
+fi

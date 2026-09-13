@@ -1,6 +1,5 @@
-// Minimal typed client for the backend API. Everything goes through the Next
-// rewrite (/api/* -> :4000/api/*), so the browser only ever talks to :3000
-// and the session cookie stays same-origin.
+// Minimal typed client for the app's own /api/* routes. Everything is same
+// origin (:3000), so the session cookie stays same-origin too.
 
 export type Me =
   | { authenticated: false }

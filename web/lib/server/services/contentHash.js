@@ -8,6 +8,9 @@
 // Agreeing on the algorithm is only half the problem. Two systems hashing "the
 // same document" disagree just as easily over encoding, line endings and
 // trailing whitespace. The canonicalisation below pins all of it.
+//
+// Ported verbatim from the old Express backend (backend/src/services/contentHash.js)
+// when that server was retired — Next.js is the only Node process now.
 
 const { ethers } = require("ethers");
 
@@ -27,7 +30,7 @@ function canonicalText(text) {
     .replace(/\r/g, "\n");
   return normalised
     .split("\n")
-    .map((line) => line.replace(/[ \t ]+$/, ""))
+    .map((line) => line.replace(/[ \t\u00a0]+$/, ""))
     .join("\n")
     .trim();
 }
