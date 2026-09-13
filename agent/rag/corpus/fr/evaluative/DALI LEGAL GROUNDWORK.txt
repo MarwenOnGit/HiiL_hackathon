@@ -1,0 +1,1086 @@
+DALI — LEGAL GROUNDWORK FOR ENGINEERING
+PART I — CONTRACT FORMATION
+“MAKE IT CLEAR”
+0. THE CORE LEGAL LOGIC
+
+Dali begins from a simple legal principle:
+
+    A contract does not necessarily need to look like a formal contract to be legally meaningful.
+
+Under the Tunisian Code of Obligations and Contracts (COC), the formation of an obligation depends principally on the required legal elements, not simply on whether the parties have produced a document called a “contract”.
+
+For Dali, this creates four separate questions:
+QUESTION 1 — WAS THERE AN AGREEMENT?
+
+Did the parties exchange sufficiently clear expressions of will showing that they agreed?
+QUESTION 2 — WHAT DID THEY AGREE TO?
+
+What were the actual terms of the transaction?
+QUESTION 3 — WHAT IS UNCLEAR OR MISSING?
+
+Are any essential or important terms ambiguous, contradictory or absent?
+QUESTION 4 — WHAT CAN BE PROVED?
+
+What messages, documents, payments, signatures or other evidence support each part of the transaction?
+
+Dali must not collapse these four questions into one.
+
+A transaction may have a potentially valid agreement but poor evidence.
+
+A transaction may have abundant evidence but unclear contractual terms.
+
+A transaction may have clear terms but a problem concerning the authority of the person who acted for a company.
+
+This distinction is fundamental to the architecture of the software.
+1. LEGAL BASIS: THE FOUR ELEMENTS OF THE OBLIGATION
+Main source
+
+Code des Obligations et des Contrats, Article 2, together with the provisions governing consent, object, cause and contractual obligations.
+
+For the MVP, Dali should work with four basic legal elements:
+Legal element	Simple meaning	What Dali checks
+Capacity	Can the person legally undertake the obligation?	Identity, role and apparent authority
+Consent	Did the parties actually agree?	Offer, acceptance and subsequent changes
+Object	What is being promised?	Goods, services, quantity, specifications
+Cause	Why is the obligation undertaken?	Economic/legal purpose of the transaction
+
+These are legal checkpoints, not four boxes that AI can mechanically “approve”.
+
+The AI should identify information relevant to each checkpoint and flag uncertainty.
+
+It should not automatically declare:
+
+    “Contract valid.”
+
+Instead, it should say things such as:
+
+    “The available exchanges show an apparent agreement concerning the sale of 500 units.”
+
+or:
+
+    “The parties appear to have agreed on the price and quantity, but the delivery date remains unclear.”
+
+2. CONSENT — DID THE PARTIES AGREE?
+2.1 What Dali needs to detect
+
+Dali should identify communications showing:
+A. An offer or proposal
+
+Example:
+
+    “I can supply 500 chairs at 12 TND each, delivery before 15 September.”
+
+B. Acceptance
+
+Example:
+
+    “OK, agreed.”
+
+C. Counter-offer
+
+Example:
+
+    “I agree, but only at 11 TND.”
+
+This is not necessarily acceptance of the original proposal. It may represent a new proposal.
+D. Conditional acceptance
+
+Example:
+
+    “Agreed, provided you deliver before 15 September.”
+
+The condition is part of the contractual analysis.
+E. Rejection
+
+Example:
+
+    “No, that price doesn't work.”
+
+F. Later modification
+
+Example:
+
+    “Actually, make it 600 units instead of 500.”
+
+Dali must treat later communications as potentially modifying the original transaction.
+3. CONSENT — THE SYSTEM MUST FOLLOW THE CONVERSATION, NOT JUST EXTRACT SENTENCES
+
+This is one of the most important engineering principles.
+
+The AI should not analyse each message independently.
+
+It should reconstruct the sequence of negotiations.
+Example
+
+Message 1 — Seller
+
+    “500 pieces at 12 TND each, delivery by 15 September.”
+
+Message 2 — Buyer
+
+    “Can you do 10 TND?”
+
+Message 3 — Seller
+
+    “11 TND.”
+
+Message 4 — Buyer
+
+    “OK.”
+
+The system should produce:
+
+Final apparent agreement
+
+    Quantity: 500
+
+    Unit price: 11 TND
+
+    Delivery deadline: 15 September
+
+    Acceptance: buyer's “OK”
+
+    Earlier price of 12 TND: superseded by later exchange
+
+It should not extract both 12 TND and 11 TND as if they were simultaneously operative terms.
+4. CONSENT — SILENCE IS NOT AUTOMATIC ACCEPTANCE
+
+Dali should not treat:
+
+    “I sent you the quotation.”
+
+followed by no response
+
+as equivalent to:
+
+    “I accept.”
+
+The system should distinguish:
+
+    proposal sent;
+
+    proposal viewed/received, if evidence exists;
+
+    discussion continued;
+
+    explicit acceptance;
+
+    conduct potentially indicating acceptance;
+
+    no evidence of acceptance.
+
+System rule
+
+Do not infer acceptance merely from silence unless the legal context clearly supports such an inference.
+
+If uncertain:
+
+    “No clear acceptance was identified in the available exchanges.”
+
+5. OFFER + DEADLINE
+
+Where the available legal rules make an offer binding for a stated period, Dali should capture:
+
+    date of offer;
+
+    content of offer;
+
+    deadline for acceptance;
+
+    whether the deadline has expired;
+
+    whether the offer was withdrawn;
+
+    whether acceptance occurred before expiry.
+
+Data structure
+
+OFFER
+├── offeror
+├── proposed terms
+├── date/time
+├── acceptance deadline
+├── acceptance identified?
+└── status
+
+Important limitation
+
+The software should distinguish:
+
+“An offer exists”
+
+from
+
+“A binding contract resulted from that offer.”
+
+The second requires analysis of the subsequent response and the other formation elements.
+6. OBJECT — WHAT IS THE TRANSACTION ABOUT?
+
+The object is the substance of what the parties undertake to provide, do, deliver, pay or perform.
+
+Dali should convert informal descriptions into structured information.
+Example
+
+User's message:
+
+    “I need 500 cotton T-shirts, black, sizes M and L, delivered before the 15th.”
+
+Dali should extract:
+
+OBJECT
+Type: Goods
+Product: T-shirts
+Material: Cotton
+Colour: Black
+Quantity: 500
+Sizes: M / L
+Delivery deadline: 15 September
+
+7. OBJECT — “WHAT” IS MORE IMPORTANT THAN PERFECT FORMAL WORDING
+
+The system should not require a sophisticated contractual description.
+
+The question is:
+
+    Can the subject of the obligation be identified or determined?
+
+The user's legal groundwork relies on COC Article 63, under which the object may be determined at least as to its kind.
+
+Therefore, Dali should distinguish:
+CLEAR
+
+    “500 office chairs, model X.”
+
+DETERMINABLE
+
+    “All chairs from the model shown in the attached quotation.”
+
+INSUFFICIENTLY CLEAR
+
+    “Send me the usual chairs.”
+
+CONTRADICTORY
+
+Message 1:
+
+    “500 units.”
+
+Later message:
+
+    “Actually, we agreed on 300.”
+
+The last situation should trigger a conflict flag, not an automatic choice.
+8. QUANTITY DOES NOT ALWAYS HAVE TO BE FIXED AT THE FIRST EXCHANGE
+
+Dali should therefore avoid the rule:
+
+    “No exact quantity = no contract.”
+
+Instead, distinguish:
+Quantity fixed
+
+    500 units.
+
+Quantity determinable
+
+    “The quantity shown on the confirmed purchase order.”
+
+Quantity still unresolved
+
+    “Send me what you have available.”
+
+The third situation requires clarification.
+Suggested user prompt
+
+    “The product is identified, but the quantity is not yet clear. Please confirm the quantity.”
+
+9. PRICE AND PAYMENT
+
+Although price is not one of the four labels in Article 2, it is a critical transaction term for Dali because it defines the parties' economic obligations.
+
+Capture:
+
+    total price;
+
+    unit price;
+
+    currency;
+
+    taxes, if mentioned;
+
+    deposit/advance;
+
+    balance;
+
+    payment deadline;
+
+    payment method;
+
+    payment conditions;
+
+    payment trigger.
+
+Example
+
+    “6,000 TND total. 50% now, 50% after delivery.”
+
+Dali creates:
+
+TOTAL = 6,000 TND
+
+PAYMENT 1
+Amount = 3,000 TND
+Timing = immediately / before delivery
+
+PAYMENT 2
+Amount = 3,000 TND
+Trigger = delivery
+
+This becomes extremely important later for the dispute module.
+10. DEADLINES AND CONDITIONS
+
+Dali must distinguish different types of time-related information.
+A. Fixed date
+
+    “Delivery on 15 September.”
+
+B. Period
+
+    “Within 10 days.”
+
+C. Event-based deadline
+
+    “Payment after delivery.”
+
+D. Approximate timing
+
+    “Around next week.”
+
+E. Unclear timing
+
+    “Deliver soon.”
+
+These should not be treated equally.
+Suggested classification
+
+🟢 Precise
+
+🟠 Determinable but needs confirmation
+
+🔴 Ambiguous
+11. CONDITIONS
+
+The AI should detect terms beginning with or equivalent to:
+
+    if;
+
+    provided that;
+
+    unless;
+
+    subject to;
+
+    only if;
+
+    once;
+
+    after;
+
+    before.
+
+Example:
+
+    “I'll pay the balance once the goods are delivered.”
+
+Dali should establish a relationship:
+
+DELIVERY
+      ↓
+TRIGGERS
+      ↓
+BALANCE PAYMENT
+
+This is important because it later becomes part of the smart-contract logic.
+12. AMBIGUITY — THE MOST IMPORTANT “MAKE IT CLEAR” FEATURE
+
+Dali should not attempt to make an ambiguous agreement look precise.
+
+Its role is to detect ambiguity and bring it back to the parties.
+Example
+
+    “If you're late, we'll reduce the price.”
+
+The system should not invent:
+
+    “Price reduced by 10%.”
+
+Instead:
+
+    “The agreement refers to a price reduction in case of delay, but the amount or method of calculation is not specified.”
+
+Then:
+
+    “Would you like to clarify the consequence of late delivery?”
+
+Possible structured choices:
+
+    Fixed amount
+
+    Percentage
+
+    Amount per day of delay
+
+    Other
+
+13. CONTRADICTIONS
+
+Dali must detect when different pieces of evidence contain different terms.
+Example
+
+Quotation:
+
+    500 units.
+
+WhatsApp:
+
+    “Let's make it 600.”
+
+Invoice:
+
+    600 units.
+
+Dali should display:
+⚠️ Quantity changed
+Source	Quantity
+Quotation	500
+WhatsApp	600
+Invoice	600
+
+Then ask:
+
+    “The quantity appears to have changed from 500 to 600. Which quantity reflects the final agreement?”
+
+This is much safer than choosing the latest document automatically.
+14. MODIFICATIONS TO THE AGREEMENT
+
+A transaction should be treated as dynamic.
+
+After initial agreement, parties may modify:
+
+    quantity;
+
+    price;
+
+    delivery date;
+
+    payment schedule;
+
+    specifications;
+
+    responsibilities;
+
+    penalties/consequences.
+
+Therefore, Dali needs:
+
+ORIGINAL AGREEMENT
+        ↓
+MODIFICATION 1
+        ↓
+MODIFICATION 2
+        ↓
+CURRENT AGREED TERMS
+
+Each modification should preserve:
+
+    source;
+
+    date/time;
+
+    parties involved;
+
+    old term;
+
+    new term;
+
+    evidence.
+
+This creates a contract history rather than a static document.
+15. CAPACITY AND AUTHORITY
+
+This requires a particularly careful distinction.
+Capacity
+
+Basic question:
+
+    Is this person legally capable of undertaking the obligation?
+
+Authority
+
+Different question:
+
+    Is this person acting for the business, and do they appear authorized to bind it?
+
+Dali should not confuse the two.
+Example
+
+Ahmed communicates:
+
+    “I confirm the order on behalf of ABC SARL.”
+
+Dali should record:
+
+Person communicating: Ahmed
+Claimed role: Representative of ABC SARL
+Contracting party: ABC SARL
+Authority evidence: Not provided
+
+The correct output is not:
+
+    “Ahmed cannot bind ABC SARL.”
+
+The correct output is:
+
+    “Ahmed appears to be acting on behalf of ABC SARL. No information confirming his authority was identified in the material provided.”
+
+This is a risk flag, not a legal conclusion.
+16. PARTY IDENTIFICATION
+
+Before Dali can analyse the agreement, it should build a Party Record.
+
+For each party:
+
+PARTY
+├── Name
+├── Business name
+├── Individual / legal entity
+├── Role
+├── Contact information
+├── Registration information
+├── Tax identification, if provided
+├── Representative, if applicable
+├── Authority evidence, if available
+└── Verification status
+
+17. BUSINESS REGISTRATION
+
+The RNE framework is relevant to Dali's party-identification layer. The 2018 legislation provides for registration of, among others, natural persons having merchant status and persons carrying on artisanal or professional activities.
+
+But the product should not turn registration into a condition for using Dali.
+
+The distinction should be:
+
+    “Not verified” ≠ “legally invalid.”
+
+Dali can record:
+VERIFIED
+
+Registration information provided or verified.
+PARTIALLY VERIFIED
+
+Some business information exists but verification is incomplete.
+NOT VERIFIED
+
+No registration information has been provided.
+CONFLICT
+
+Information provided by the parties does not match.
+18. WHY PARTY VERIFICATION MATTERS
+
+The purpose is not to decide whether a contract exists.
+
+The purpose is to improve:
+
+    identification;
+
+    evidence;
+
+    accountability;
+
+    later dispute resolution;
+
+    communication;
+
+    enforcement preparation.
+
+Example:
+
+    “Ahmed” may be enough to communicate informally.
+
+But for a dispute, the user may need to establish:
+
+    Who exactly was the contracting party?
+
+Dali therefore turns informal identity information into a structured record.
+19. CAUSE — KEEP THIS SIMPLE IN THE MVP
+
+The legal concept of cause should be included in the legal model but should not become a complicated AI decision tree.
+
+For ordinary commercial transactions, Dali can capture the apparent economic purpose:
+
+    sale of goods → payment of price
+
+    provision of services → payment of fees
+
+    supply arrangement → reciprocal performance
+
+The AI should primarily flag situations where the apparent purpose is:
+
+    missing;
+
+    contradictory;
+
+    apparently unlawful;
+
+    inconsistent with the transaction described.
+
+It should not attempt to determine complex questions of legality autonomously.
+Safe output
+
+    “The stated purpose of this transaction is unclear. Please provide more information.”
+
+Not:
+
+    “This contract is legally invalid.”
+
+20. DALI'S INTERNAL CONTRACT STATUS
+
+The engineering team should not use a single field called:
+
+contract_valid = true/false
+
+That is too crude and legally dangerous.
+
+Instead use separate statuses.
+Suggested model
+
+FORMATION_STATUS
+├── No apparent agreement
+├── Agreement developing
+├── Apparent agreement
+├── Agreement with unresolved terms
+└── Requires human/legal review
+
+And separately:
+
+EVIDENCE_STATUS
+├── Weak
+├── Partial
+├── Good
+└── Strong
+
+And:
+
+IDENTITY_STATUS
+├── Unverified
+├── Partially verified
+└── Verified
+
+And:
+
+TERM_STATUS
+├── Clear
+├── Determinable
+├── Ambiguous
+└── Contradictory
+
+This separation is one of the most important architectural decisions in the whole product.
+21. THE “TRANSACTION RECORD”
+
+The output of the first module should therefore not simply be a contract.
+
+It should be a structured:
+TRANSACTION RECORD
+
+TRANSACTION
+│
+├── PARTIES
+│   ├── Buyer
+│   ├── Seller / Provider
+│   └── Representatives
+│
+├── CONSENT
+│   ├── Offer
+│   ├── Acceptance
+│   ├── Counter-offers
+│   └── Modifications
+│
+├── OBJECT
+│   ├── Goods / Services
+│   ├── Quantity
+│   └── Specifications
+│
+├── PRICE & PAYMENT
+│   ├── Price
+│   ├── Deposit
+│   ├── Balance
+│   └── Payment triggers
+│
+├── PERFORMANCE
+│   ├── Delivery
+│   ├── Deadlines
+│   └── Other obligations
+│
+├── CONDITIONS
+│   ├── Conditions
+│   └── Consequences of delay/non-performance
+│
+├── EVIDENCE
+│   ├── Messages
+│   ├── Voice notes
+│   ├── Quotes
+│   ├── Invoices
+│   ├── Payment proof
+│   └── Delivery proof
+│
+└── RISKS / UNCERTAINTIES
+    ├── Missing information
+    ├── Ambiguities
+    ├── Contradictions
+    └── Identity/authority issues
+
+22. EVIDENCE MUST BE LINKED TO TERMS
+
+This is essential for the next stage of Dali.
+
+The system should not merely store documents in a folder.
+
+Each important contractual term should be linked to its source.
+Example
+
+Term: Quantity = 500 units
+
+Evidence:
+
+    WhatsApp message — 10 September, 14:32
+
+    Quotation — PDF, page 1
+
+    Purchase order — PDF, page 1
+
+Therefore:
+
+TERM
+Quantity = 500
+
+SUPPORTED BY
+Evidence 01
+Evidence 04
+Evidence 07
+
+Later, if the seller delivers 350 units, Dali can connect:
+
+CONTRACTUAL OBLIGATION
+500 units
+
+VS.
+
+PERFORMANCE EVIDENCE
+350 units delivered
+
+↓
+
+POTENTIAL NON-PERFORMANCE
+
+That is the bridge between Make it Clear and Make it Provable.
+23. WHAT DALI SHOULD SAY TO THE USER
+
+The interface should use simple language, even though the underlying legal model is sophisticated.
+
+Instead of:
+
+    “The essential conditions of validity under Article 2 appear to be satisfied.”
+
+Use:
+
+    “We found an apparent agreement.”
+
+Then:
+
+    “Here is what we understood.”
+
+Then:
+
+    “Two points still need clarification.”
+
+This gives the user legal structure without pretending that the AI is issuing a legal judgment.
+24. THE USER CONFIRMATION STEP
+
+After extraction, Dali should ask the parties to confirm the structured record.
+Screen:
+“Here is what we understood”
+
+Buyer: ABC Café
+Seller: Ahmed / XYZ Supplies
+Goods: 500 chairs
+Price: 12 TND/unit
+Total: 6,000 TND
+Deposit: 3,000 TND
+Balance: 3,000 TND after delivery
+Delivery: 15 September
+Then:
+
+    “Is this correct?”
+
+Buttons:
+
+Confirm
+
+Edit
+
+Something is missing
+
+This confirmation is crucial because AI extraction should remain distinguishable from the parties' own agreement.
+25. WHAT THE AI MUST NEVER DO
+
+For this module, the following are hard constraints.
+DO NOT:
+
+    invent contractual terms;
+
+    assume acceptance from silence;
+
+    automatically choose between contradictory statements;
+
+    declare a contract invalid merely because it is informal;
+
+    declare a contract valid merely because four pieces of information were extracted;
+
+    assume that a person represents a company without qualification;
+
+    treat missing registration as automatic invalidity;
+
+    silently interpret ambiguous penalties or conditions;
+
+    convert an uncertain legal conclusion into a fact;
+
+    present an AI-generated interpretation as if it were the parties' agreement.
+
+DO:
+
+    identify;
+
+    structure;
+
+    compare;
+
+    flag;
+
+    ask;
+
+    preserve the source;
+
+    let the parties confirm.
+
+26. ENGINEERING LOGIC — SIMPLE VERSION
+
+The engineers can reduce the legal model to this workflow:
+
+INPUT
+Messages + voice notes + quotes + invoices + payment/delivery evidence
+                    ↓
+1. IDENTIFY PARTIES
+                    ↓
+2. EXTRACT PROPOSALS
+                    ↓
+3. IDENTIFY ACCEPTANCE / REJECTION / COUNTER-OFFERS
+                    ↓
+4. BUILD AGREED TERMS
+                    ↓
+5. IDENTIFY OBJECT + PRICE + PAYMENT + DEADLINES
+                    ↓
+6. DETECT CONDITIONS
+                    ↓
+7. DETECT MODIFICATIONS
+                    ↓
+8. DETECT AMBIGUITIES / CONTRADICTIONS
+                    ↓
+9. LINK EACH TERM TO ITS EVIDENCE
+                    ↓
+10. PRESENT TRANSACTION RECORD
+                    ↓
+11. USER CONFIRMS / CORRECTS
+                    ↓
+12. LOCK CONFIRMED VERSION
+
+27. THE LEGAL PRINCIPLE BEHIND THE FEATURE
+
+The product's legal proposition can therefore be stated very simply:
+
+    Dali does not create a contract merely by putting informal communications into a template. It identifies and structures the agreement that may already exist, makes uncertainty visible, and creates a clearer record of what the parties actually agreed.
+
+That distinction is central to the product's legal credibility.
+MODULE 2 — PARTY IDENTITY AND COMMERCIAL STATUS
+1. PURPOSE
+
+The purpose of this module is not to decide whether a person is legally entitled to contract.
+
+Its purpose is to answer:
+
+    Who are the parties, in what capacity are they acting, and what information supports their identity?
+
+2. PARTY TYPES
+
+Dali should distinguish:
+A. Individual acting personally
+
+    “I am buying 100 units for my shop.”
+
+B. Individual trader / professional
+
+Person appears to conduct business personally.
+C. Legal entity
+
+Company or other legal entity is identified as the contracting party.
+D. Representative
+
+A natural person communicates or signs on behalf of another person/entity.
+3. REPRESENTATION
+
+If:
+
+    “Ahmed, manager of XYZ SARL, confirms the order.”
+
+Dali should store:
+
+CONTRACTING PARTY = XYZ SARL
+
+ACTING PERSON = Ahmed
+
+CLAIMED ROLE = Manager
+
+AUTHORITY EVIDENCE = Not yet provided
+
+If a company document or other evidence identifies Ahmed's role:
+
+AUTHORITY EVIDENCE = Provided
+
+Again:
+
+absence of evidence of authority ≠ automatic conclusion that there is no authority.
+
+It is a verification issue.
+4. REGISTRATION INFORMATION
+
+Where available, Dali can collect:
+
+    legal/business name;
+
+    RNE identifier;
+
+    tax identifier;
+
+    business address;
+
+    business activity;
+
+    registration documents.
+
+But the system should treat these as verification information, not as the sole determinant of contractual existence.
+
+The RNE framework makes registration an important part of identifying economic operators.
+5. IDENTITY CONFLICTS
+
+Dali should detect inconsistencies.
+
+Example:
+
+WhatsApp:
+
+    “This is Ahmed from ABC SARL.”
+
+Quotation:
+
+    “ABC Trading SARL.”
+
+Invoice:
+
+    “ABC Commerce.”
+
+Dali should flag:
+
+    “The business names in your documents do not appear identical. Please confirm which entity is the contracting party.”
+
+This is much more useful than simply saying:
+
+    “Identity mismatch.”
+
+6. PARTY CONFIRMATION
+
+Before finalizing the transaction record:
+
+    “Please confirm the parties to this transaction.”
+
+Then display:
+
+Party 1
+ABC SARL
+Buyer
+
+Party 2
+XYZ SARL
+Seller
+
+Representative
+Ahmed Ben Ali
+Acting for XYZ SARL
+
+Verification
+Partially verified
+7. FINAL DATA MODEL
+
+The first two modules should ultimately feed one unified structure:
+
+DALI TRANSACTION RECORD
+
+A. PARTIES
+   - identity
+   - role
+   - legal/business status
+   - representative
+   - authority
+   - verification
+
+B. FORMATION
+   - offer
+   - acceptance
+   - counter-offer
+   - modifications
+   - consent status
+
+C. TERMS
+   - object
+   - quantity
+   - specifications
+   - price
+   - payment
+   - deadlines
+   - delivery
+   - conditions
+
+D. EVIDENCE
+   - source
+   - date/time
+   - document/message
+   - linked term
+
+E. UNCERTAINTY
+   - missing
+   - ambiguous
+   - contradictory
+   - unverified
+
+F. USER CONFIRMATION
+   - confirmed terms
+   - corrections
+   - confirmation date
+   - confirmation by party
+
+The guiding rule
+Extract → Structure → Compare → Flag → Ask → Confirm → Preserve evidence
+
+That should be the legal-engineering philosophy of Dali's “Make it Clear” module.
+
+Only after this record is confirmed should the system move into the next layer:
+
+MAKE IT PROVABLE → monitor performance against the confirmed obligations → identify potential non-performance → build the evidence timeline → prepare for early resolution.

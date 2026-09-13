@@ -22,10 +22,38 @@ function show(name) {
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
+// Raw fetch errors ("fetch failed", "NetworkError") mean nothing to the person
+// standing in front of the screen. Every failure that reaches the UI gets a
+// sentence that says what broke and what to do about it.
+const OFFLINE_MESSAGE =
+  "Le service d'analyse ne répond pas. Relancez-le avec ./start.sh mock — " +
+  "l'ancrage et la confirmation continuent de fonctionner sans lui.";
+
 async function api(path, options = {}) {
-  const res = await fetch(API + path, options);
+  let res;
+  try {
+    res = await fetch(API + path, options);
+  } catch (err) {
+    markOffline();
+    throw new Error(OFFLINE_MESSAGE);
+  }
   const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(body.detail || body.error || `HTTP ${res.status}`);
+  if (res.status === 503 || body.agent_available === false) {
+    markOffline();
+    throw new Error(body.hint || OFFLINE_MESSAGE);
+  }
+  if (!res.ok) {
+    const detail = body.detail;
+    if (detail && typeof detail === "object") {
+      // The service sends structured detail for a document it could not read.
+      throw new Error(
+        (detail.error || "document illisible") +
+        (detail.needs_ocr ? " — ce PDF n'a pas de couche texte (scan). Un moteur OCR est requis." : "") +
+        (detail.warnings && detail.warnings.length ? ` (${detail.warnings[0]})` : "")
+      );
+    }
+    throw new Error(detail || body.error || `Erreur ${res.status}`);
+  }
   return body;
 }
 
@@ -36,8 +64,13 @@ async function api(path, options = {}) {
 function renderGrounding(health) {
   const banner = el("grounding-banner");
   if (!health.agent_available) {
-    banner.innerHTML = `<div class="banner banner-warn"><strong>Service d'analyse indisponible.</strong>
-      L'ancrage et la confirmation restent utilisables. ${esc(health.detail || "")}</div>`;
+    banner.innerHTML = `<div class="banner banner-warn">
+      <strong>Service d'analyse indisponible.</strong>
+      L'ancrage et la confirmation restent utilisables sans lui.
+      <br>Relancez-le : <code>./start.sh mock</code> — ou, seul :
+      <code>cd agent &amp;&amp; python3 -m uvicorn service:app --port 5001</code>
+      <br><span class="source-note">Reconnexion automatique dès qu'il répond.</span>
+      </div>`;
     return;
   }
   if (!health.grounding_available) {
@@ -55,6 +88,10 @@ function renderGrounding(health) {
 // ---------- 1. ingest ----------
 async function analyse(formData) {
   el("ingest-error").textContent = "";
+  if (!agentReady && !(await checkHealth())) {
+    el("ingest-error").textContent = OFFLINE_MESSAGE;
+    return;
+  }
   el("btn-analyse").disabled = true;
   el("btn-demo").disabled = true;
   try {
@@ -102,11 +139,21 @@ function renderFindings(report) {
     : `<p class="finding-why">Aucune clause obligatoire manquante.</p>`;
 
   el("redlines").innerHTML = report.redlines.map((r) => {
+    // Deliberately NOT labelled "base légale". Lexical retrieval proves the
+    // article shares vocabulary with the clause; it does not prove the article
+    // governs it. Showing the matched words lets a reader dismiss a
+    // coincidence instead of trusting a confident-looking citation.
     const basis = r.grounded
-      ? `<div class="redline-basis basis-cited">Base légale :
+      ? `<div class="redline-basis basis-cited">
+           <strong>Extraits retrouvés</strong> — à vérifier :
            ${r.legal_basis.map((b) => `<span class="basis-ref">${esc(b.source_doc)} ${esc(b.article_ref)}</span>`).join(", ")}
-           <div style="margin-top:5px">${esc(r.legal_basis[0].excerpt.slice(0, 220))}…</div></div>`
-      : `<div class="redline-basis basis-none">${esc(r.no_legal_basis.message)}</div>`;
+           <div style="margin-top:5px">${esc(r.legal_basis[0].excerpt.slice(0, 220))}…</div>
+           ${r.legal_basis[0].matched_terms && r.legal_basis[0].matched_terms.length
+             ? `<div class="source-note">mots correspondants : ${r.legal_basis[0].matched_terms.map(esc).join(", ")}</div>` : ""}
+           <div class="source-note">${esc(r.verification_note || "")}</div>
+         </div>`
+      : `<div class="redline-basis basis-none">${esc(r.no_legal_basis.message)}
+           <div class="source-note">${esc(r.no_legal_basis.reason)}</div></div>`;
     return `<div class="redline">
         <div class="finding-title">${esc(r.rationale)}
           <span class="status-pill ${r.risk_kind === "asymmetric" ? "status-pending" : "status-pending"}">${esc(r.risk_kind)}</span></div>
@@ -280,15 +327,59 @@ responsable des consequences d'une rupture de stock.`;
 el("stmt-buyer").value = "La livraison de juin contenait 12 panneaux fissures\nLe paiement de juin n a pas ete effectue";
 el("stmt-supplier").value = "La livraison de juin ne contenait pas de panneaux fissures\nLe paiement de juin n a pas ete effectue";
 
-(async function init() {
-  try {
-    const health = await api("/health");
-    agentReady = health.agent_available;
-    el("agent-pill").textContent = health.agent_available
-      ? `agent: ok · corpus ${health.corpus_size}` : "agent: hors ligne";
-    renderGrounding(health);
-  } catch (err) {
-    el("agent-pill").textContent = "agent: hors ligne";
-    renderGrounding({ agent_available: false, detail: err.message });
+let healthTimer = null;
+
+function markOffline() {
+  agentReady = false;
+  el("agent-pill").textContent = "agent: hors ligne";
+  setActionsEnabled(false);
+  startHealthPolling();
+}
+
+function setActionsEnabled(enabled) {
+  for (const id of ["btn-analyse", "btn-demo", "btn-accept", "btn-sign", "btn-dispute"]) {
+    const node = el(id);
+    if (node) node.disabled = !enabled;
   }
+}
+
+// The health check used to run once at load, so a service that came back after
+// the page opened stayed "offline" until someone thought to reload. Poll while
+// down and recover on our own.
+function startHealthPolling() {
+  if (healthTimer) return;
+  healthTimer = setInterval(checkHealth, 3000);
+}
+
+function stopHealthPolling() {
+  if (healthTimer) { clearInterval(healthTimer); healthTimer = null; }
+}
+
+async function checkHealth() {
+  let health;
+  try {
+    const res = await fetch(API + "/health");
+    health = await res.json();
+  } catch (err) {
+    health = { agent_available: false, detail: "le backend lui-même ne répond pas" };
+  }
+  const wasReady = agentReady;
+  agentReady = Boolean(health.agent_available);
+
+  el("agent-pill").textContent = agentReady
+    ? `agent: ok · corpus ${health.corpus_size}` : "agent: hors ligne";
+  setActionsEnabled(agentReady);
+  renderGrounding(health);
+
+  if (agentReady) {
+    stopHealthPolling();
+    if (!wasReady) el("ingest-error").textContent = "";
+  } else {
+    startHealthPolling();
+  }
+  return agentReady;
+}
+
+(async function init() {
+  await checkHealth();
 })();

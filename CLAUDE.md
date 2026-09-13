@@ -272,3 +272,27 @@ tooling and none should be — inventing an article to make the demo look comple
 exactly invariant 7's failure mode, and it is the one a legal judge will catch. Every
 legal finding currently renders "no legal basis retrieved", which is a correct result.
 Drop the corpus in per `rag/corpus/README.md` and citations appear with no code change.
+
+**18. The article chunker must handle several heading formats in one file.** The
+Tunisian COC markdown writes headings two ways — `**Article 564.**\- ` inline and
+bold, and `Article 1107` at line start — and the first pattern only anchored at line
+start. Result: 1106 bold headings never matched and everything before the first
+line-start heading (355 KB) became one "preamble" chunk that contained nearly every
+word in the corpus, matched *any* query at full coverage, and became the cited
+authority for unrelated questions. `MAX_CHUNK_CHARS` now caps every chunk as a
+corpus-agnostic safety net.
+
+**19. Retrieval relevance is measured on SELECTIVE terms, and needs two of them.**
+Coverage over all query terms counted `tout`, `moment` and `pourra` as evidence, which
+is how a query about unilateral termination cited an article about goods sold by
+weight. Terms appearing in more than `MAX_SIGNAL_DF` of the candidate set carry no
+signal; a citation needs `MIN_SIGNAL_MATCHES` distinct selective terms, because one
+shared rare word is a coincidence. Below `MIN_CORPUS_FOR_DF` chunks, document frequency
+is not a meaningful statistic and every term counts as selective.
+
+**20. Retrieved text is labelled "extraits retrouvés — à vérifier", never "base
+légale".** Lexical retrieval proves an article shares vocabulary with a clause; it does
+not prove the article governs it. The UI shows which words matched so a reader can
+dismiss a coincidence rather than trust a confident-looking citation. Overstating
+retrieval as verified authority would breach invariant 7 just as surely as generating
+the article would.

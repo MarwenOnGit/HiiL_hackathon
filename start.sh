@@ -24,7 +24,11 @@ die() { printf '\033[1;31m[start.sh]\033[0m %s\n' "$1" >&2; exit 1; }
 cleanup() {
   if [[ -n "$AGENT_PID" ]] && kill -0 "$AGENT_PID" 2>/dev/null; then
     log "Stopping agent service (pid $AGENT_PID)…"
+    # Kill the supervisor first so it doesn't restart the child we're stopping,
+    # then whatever still holds the port.
     kill "$AGENT_PID" 2>/dev/null || true
+    sleep 0.3
+    fuser -k -TERM "${AGENT_PORT}/tcp" 2>/dev/null || true
   fi
   if [[ "$STARTED_HARDHAT" == "1" && -n "$HARDHAT_PID" ]] && kill -0 "$HARDHAT_PID" 2>/dev/null; then
     log "Stopping local chain (pid $HARDHAT_PID)…"
@@ -119,9 +123,25 @@ if [[ -d "$AGENT_DIR" ]] && command -v python3 >/dev/null 2>&1; then
       log "An agent service is already answering on port ${AGENT_PORT} — reusing it."
     else
       log "Starting agent service on http://127.0.0.1:${AGENT_PORT}…"
-      (cd "$AGENT_DIR" && exec python3 -m uvicorn service:app \
-        --host 127.0.0.1 --port "$AGENT_PORT" --log-level warning \
-        > "$ROOT_DIR/agent-service.log" 2>&1) &
+      # Supervised: if the agent dies mid-demo, bring it straight back rather
+      # than leaving the UI stuck on "analysis unavailable" until someone
+      # notices. Capped so a genuinely broken service doesn't spin forever.
+      (
+        cd "$AGENT_DIR"
+        attempts=0
+        while [[ $attempts -lt 20 ]]; do
+          python3 -m uvicorn service:app \
+            --host 127.0.0.1 --port "$AGENT_PORT" --log-level warning \
+            >> "$ROOT_DIR/agent-service.log" 2>&1
+          status=$?
+          # 0 or 143 (SIGTERM) means we asked it to stop — don't fight cleanup.
+          if [[ $status -eq 0 || $status -eq 143 ]]; then break; fi
+          attempts=$((attempts + 1))
+          echo "[start.sh] agent service exited ($status); restart $attempts/20" \
+            >> "$ROOT_DIR/agent-service.log"
+          sleep 1
+        done
+      ) &
       AGENT_PID=$!
       for _ in $(seq 1 20); do
         curl -s -o /dev/null -m 1 "http://127.0.0.1:${AGENT_PORT}/health" && break

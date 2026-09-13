@@ -58,6 +58,34 @@ _MODE_CORPORA = {
 # Raise it if citations look thin; never lower it to make a demo look fuller.
 MIN_COVERAGE = 0.5
 
+# A term appearing in more than this share of the candidate set carries no
+# selective signal. "tout", "moment", "pourra" are as common in a civil code as
+# stopwords are in prose, and counting them as evidence is how a query about
+# unilateral termination cited an article about goods sold by weight: the chunk
+# genuinely shared four words, none of which meant anything.
+#
+# Coverage is therefore measured over SIGNAL terms only — the ones selective
+# enough that sharing them is actually evidence of aboutness.
+MAX_SIGNAL_DF = 0.10
+
+# One shared selective word is a coincidence; two is evidence. A query sharing
+# only "quantite" with an article about deposit registers, or only "duree" with
+# an article about sharecropping partnerships, produced a confident citation to
+# something completely unrelated. Requiring two independent signal terms killed
+# both without losing the citations that were actually right.
+#
+# The consequence is deliberate: fewer clauses get a legal basis, and the rest
+# honestly report that none was found. That is the correct trade — a wrong
+# citation in front of a legal jury costs more than a missing one.
+MIN_SIGNAL_MATCHES = 2
+
+# Document frequency is a statistic, and a statistic needs a sample. On a
+# candidate set of two or three chunks every term appears in "100% of
+# documents" and the selectivity filter deletes all signal, so retrieval
+# returns nothing at all. Below this size, treat every query term as selective
+# and let coverage alone decide.
+MIN_CORPUS_FOR_DF = 20
+
 
 @dataclass
 class Hit:
@@ -67,6 +95,7 @@ class Hit:
     corpus_type: CorpusType
     language: Language
     score: float
+    matched_terms: list[str] = field(default_factory=list)
 
     def to_legal_ref(self) -> LegalRef:
         """Every citation in the system is born here, from a real chunk.
@@ -140,6 +169,26 @@ class Retriever:
     def __init__(self, index: VectorIndex) -> None:
         self._index = index
 
+    def _signal_terms(
+        self, terms: set[str], language: Language, corpus_types: list[CorpusType]
+    ) -> set[str]:
+        """Query terms selective enough that sharing one is real evidence."""
+        candidates = [
+            c for c in getattr(self._index, "_chunks", [])
+            if c.language is language and c.corpus_type in corpus_types
+        ]
+        total = len(candidates)
+        if total == 0:
+            return set()
+        if total < MIN_CORPUS_FOR_DF:
+            return set(terms)
+        selective: set[str] = set()
+        for term in terms:
+            hits = sum(1 for c in candidates if term in set(tokenise(c.text)))
+            if hits and hits / total <= MAX_SIGNAL_DF:
+                selective.add(term)
+        return selective
+
     def retrieve(
         self,
         query: str,
@@ -153,15 +202,20 @@ class Retriever:
             query, language=language, corpus_types=corpus_types, limit=limit * 3
         )
         terms = set(tokenise(query))
+        signal = self._signal_terms(terms, language, corpus_types)
+
         strong: list[Scored] = []
         best_coverage = 0.0
+        best_matches = 0
+        matched_by_chunk: dict[str, list[str]] = {}
         for scored in raw:
-            coverage = (
-                len(terms & set(tokenise(scored.chunk.text))) / len(terms)
-                if terms else 0.0
-            )
+            chunk_terms = set(tokenise(scored.chunk.text))
+            matched = signal & chunk_terms
+            coverage = len(matched) / len(signal) if signal else 0.0
             best_coverage = max(best_coverage, coverage)
-            if coverage >= MIN_COVERAGE:
+            best_matches = max(best_matches, len(matched))
+            if len(matched) >= MIN_SIGNAL_MATCHES and coverage >= MIN_COVERAGE:
+                matched_by_chunk[scored.chunk.chunk_id] = sorted(matched)
                 strong.append(scored)
         strong = strong[:limit]
 
@@ -169,16 +223,27 @@ class Retriever:
             size = len(self._index)
             if size == 0:
                 reason = "the corpus is empty — nothing has been indexed"
+            elif not signal:
+                reason = (
+                    "the query contains no term selective enough to cite on — "
+                    "every word in it is common across the corpus"
+                )
             elif not raw:
                 reason = (
                     f"no chunk in the {mode.value} corpus for {language.value} "
                     "shares any meaningful term with the query"
                 )
+            elif best_matches < MIN_SIGNAL_MATCHES:
+                reason = (
+                    f"the best match shared only {best_matches} selective term "
+                    f"with the query ({MIN_SIGNAL_MATCHES} required) — a single "
+                    "shared word is a coincidence, not a legal basis"
+                )
             else:
                 reason = (
                     f"the best match covered {best_coverage:.0%} of the query's "
-                    f"terms, below the {MIN_COVERAGE:.0%} floor — too weak to "
-                    "cite as a legal basis"
+                    f"selective terms, below the {MIN_COVERAGE:.0%} floor — too "
+                    "weak to cite as a legal basis"
                 )
             return RetrievalResult(
                 query=query, mode=mode, language=language,
@@ -198,6 +263,7 @@ class Retriever:
                     corpus_type=s.chunk.corpus_type,
                     language=s.chunk.language,
                     score=round(s.score, 3),
+                    matched_terms=matched_by_chunk.get(s.chunk.chunk_id, []),
                 )
                 for s in strong
             ],
