@@ -166,9 +166,17 @@ class BannedPhrasing(unittest.TestCase):
             # uses the phrase ("jugement passé en force de chose jugée"), and
             # censoring the source text would corrupt the very thing citations
             # are checked against.
+            #
+            # core/grounding.py is excluded for the same reason as this file:
+            # it is the blocklist that REJECTS the phrase in generated text, so
+            # it has to be able to spell what it forbids. That exemption is not
+            # a hole — GeneratedTextIsChecked in test_llm.py proves the
+            # blocklist actually rejects the phrase, which is the behaviour this
+            # string search is a proxy for.
             if (
                 "__pycache__" in str(path)
                 or path.name == "test_agents.py"
+                or path.as_posix().endswith("core/grounding.py")
                 or "rag/corpus/" in path.as_posix()
             ):
                 continue

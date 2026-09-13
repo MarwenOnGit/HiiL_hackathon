@@ -34,6 +34,9 @@ class DisputeReport:
     negotiation: Negotiation
     attest_tx: str | None = None
     caveats: list[str] = field(default_factory=list)
+    # Neutral prose over the ledger and the figures below, or a stated reason
+    # there is none. Both parties are shown the same text: see narrative.py.
+    narrative: Any = None
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -65,6 +68,11 @@ class DisputeReport:
             "settlement_options": [o.as_dict() for o in self.options],
             "negotiation": self.negotiation.as_dict(),
             "anchor": {"attest_tx": self.attest_tx},
+            "narrative": (
+                self.narrative.as_dict() if self.narrative is not None
+                else {"available": False, "reason": "narration not requested",
+                      "rule_based": True}
+            ),
             "neutrality": {
                 "shared_ledger": True,
                 "shared_batna": True,
@@ -87,6 +95,8 @@ def resolve(
     contested: bool = True,
     claim_amount: float | None = None,
     chain: BlockchainClient | None = None,
+    llm=None,
+    language: str = "fr",
 ) -> DisputeReport:
     intake = open_dispute(
         contract, dispute_id=dispute_id, event_date=event_date, claims=claims
@@ -114,7 +124,7 @@ def resolve(
         )
         attest_tx = record.tx_hash
 
-    return DisputeReport(
+    report = DisputeReport(
         intake=intake,
         facts=facts,
         batna=batna,
@@ -123,3 +133,11 @@ def resolve(
         attest_tx=attest_tx,
         caveats=batna.caveats,
     )
+
+    # After the attestation, for the same reason as in Agent 1: the narrative
+    # reads out a record that is already fixed and already on-chain.
+    if llm is not None:
+        from .narrative import summarise
+        report.narrative = summarise(report, llm, language=language)
+
+    return report

@@ -1,0 +1,42 @@
+# The model backend. Identifiers and figures live here, never inside a prompt,
+# so the model can be swapped or the cost tuned without touching agent code.
+#
+# Provider is OpenRouter, whose chat-completions API is OpenAI-compatible. The
+# agent layer speaks it over stdlib urllib (see core/llm_client.py) because no
+# HTTP client is installed in this venv and pip is externally managed offline.
+
+provider: openrouter
+base_url: https://openrouter.ai/api/v1
+
+# The key is never stored here. This names the environment variable to read it
+# from; put it in agent/.env (gitignored) or export it before starting.
+api_key_env: OPENROUTER_API_KEY
+
+# DeepSeek V3 chat: the cheap workhorse. Roughly two orders of magnitude below
+# frontier pricing, which matters because every hardening run makes a call.
+# Override per-deployment with the OPENROUTER_MODEL environment variable.
+#
+# Alternatives, cheapest first:
+#   deepseek/deepseek-chat-v3-0324:free  no cost, rate-limited, can be busy
+#   deepseek/deepseek-chat               V3, paid, reliable  <- default
+#   deepseek/deepseek-chat-v3-0324       V3 pinned to a dated snapshot
+#   deepseek/deepseek-r1                 reasoning, markedly dearer and slower
+model: deepseek/deepseek-chat
+
+# Narratives are short by design: the prompts ask for a handful of sentences,
+# and a cap is the cost control that does not depend on the model obeying.
+max_tokens: 700
+
+# Near-deterministic. These outputs are read as analysis, so the same contract
+# should not describe itself differently on a refresh during a demo.
+temperature: 0.2
+
+# One retry, because a cold route on OpenRouter fails fast and succeeds on the
+# second try. Beyond that the deterministic output is already good enough.
+timeout_seconds: 45
+max_retries: 1
+
+# Hard ceiling on what may be sent. Contract text never goes to the model —
+# only the structured findings and retrieved excerpts — and this bounds a
+# runaway digest from turning into a surprise bill.
+max_prompt_chars: 12000

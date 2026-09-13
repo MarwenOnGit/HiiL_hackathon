@@ -7,10 +7,12 @@ import { api, esc, fmtDate, fmtTime, getMe } from "@/lib/api";
 import { useI18n, type MsgKey } from "@/lib/i18n";
 import TopBar from "@/components/TopBar";
 import InvitePanel from "@/components/InvitePanel";
+import AnalysisPanel, { type Analysis } from "@/components/AnalysisPanel";
+import VerifyButton from "@/components/VerifyButton";
 
 interface Row {
   contract_id: string;
-  source: "wizard" | "hardened";
+  source: "wizard" | "hardened" | "demo";
   msme_owner: string | null;
   counterparty: string | null;
   signed: boolean;
@@ -58,6 +60,8 @@ export default function ContractDetailPage() {
   const [versions, setVersions] = useState<any[] | null>(null);
   const [history, setHistory] = useState<any[] | null>(null);
   const [obligations, setObligations] = useState<Ob[] | null>(null);
+  const [analysis, setAnalysis] = useState<Analysis | null>(null);
+  const [contractText, setContractText] = useState("");
   const [invited, setInvited] = useState(false);
 
   useEffect(() => {
@@ -88,6 +92,8 @@ export default function ContractDetailPage() {
         if (v.ok) {
           setVersions(v.body.versions || []);
           setObligations(v.body.obligations || []);
+          if (v.body.contract_text) setContractText(v.body.contract_text);
+          if (v.body.analysis) setAnalysis(v.body.analysis as Analysis);
         }
         if (h.ok) setHistory(h.body.entries || []);
       }
@@ -141,7 +147,7 @@ export default function ContractDetailPage() {
           <div className="banner banner-ok">{t("detail.invitationCreated")}</div>
         )}
 
-        {row && longRow(row, wizard, versions, history, obligations, contractId, t)}
+        {row && longRow(row, wizard, versions, history, obligations, contractId, t, analysis, contractText)}
       </main>
     </div>
   );
@@ -154,7 +160,9 @@ function longRow(
   history: any[] | null,
   obligations: Ob[] | null,
   contractId: string,
-  t: (key: MsgKey, vars?: Record<string, string | number>) => string
+  t: (key: MsgKey, vars?: Record<string, string | number>) => string,
+  analysis: Analysis | null,
+  contractText: string
 ) {
   const docTypeLabel = (docType: string) => {
     const key = DOCTYPE_KEYS[docType];
@@ -176,6 +184,23 @@ function longRow(
         <div className="stat"><div className="stat-num">{row.signed ? "✓" : "—"}</div><div className="stat-label">{t("detail.statExecuted")}</div></div>
         <div className="stat"><div className="stat-num">{obligations ? obligations.length : "—"}</div><div className="stat-label">{t("detail.statObligations")}</div></div>
       </div>
+
+      {contractText && (
+        <div className="card" style={{ marginTop: 14 }}>
+          <h3>{t("detail.contractWizard")}</h3>
+          <pre style={{ whiteSpace: "pre-wrap", fontSize: 13, background: "var(--surface-alt)", padding: 14, borderRadius: 12, direction: "ltr" }}>{contractText}</pre>
+          <VerifyButton contractId={contractId} />
+        </div>
+      )}
+
+      {analysis && (
+        <>
+          <div className="section-title" style={{ marginTop: 22 }}>
+            <h2>{t("an.title")}</h2>
+          </div>
+          <AnalysisPanel analysis={analysis} />
+        </>
+      )}
 
       {wizard && (
         <>
@@ -275,7 +300,12 @@ function longRow(
       </div>
 
       <div style={{ display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
-        {row.signed || row.source === "hardened" ? (
+        {row.source === "demo" && (
+          <Link className="btn btn-warm" href={`/dispute?contract_id=${encodeURIComponent(contractId)}`}>
+            {t("dp.open")} <span className="rtl-flip">→</span>
+          </Link>
+        )}
+        {row.signed || row.source === "hardened" || row.source === "demo" ? (
           <Link className="btn btn-primary" href={`/thread?contract_id=${encodeURIComponent(contractId)}`}>
             {t("detail.openThread")} <span className="rtl-flip">→</span>
           </Link>

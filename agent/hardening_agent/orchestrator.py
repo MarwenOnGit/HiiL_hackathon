@@ -39,6 +39,9 @@ class HardeningReport:
     corpus_size: int = 0
     analysis_tx: str | None = None
     analysis_fingerprint: str | None = None
+    # Prose written by the model narrator over the findings above, or a stated
+    # reason there is none. Never a source: see narration.py.
+    narrative: Any = None
 
     @property
     def grounded_recommendations(self) -> int:
@@ -108,6 +111,13 @@ class HardeningReport:
                 # an ungrounded finding was legally checked.
                 "all_ungrounded": self.corpus_size == 0 and bool(self.recommendations),
             },
+            # Always present, so a consumer never has to distinguish "no key"
+            # from "field not implemented". `available: false` carries why.
+            "narrative": (
+                self.narrative.as_dict() if self.narrative is not None
+                else {"available": False, "reason": "narration not requested",
+                      "rule_based": True}
+            ),
         }
 
 
@@ -122,6 +132,7 @@ def harden(
     store=None,
     effective_from: datetime | None = None,
     metadata: dict[str, Any] | None = None,
+    llm=None,
 ) -> HardeningReport:
     from .segmenter import segment  # local import keeps the module graph shallow
 
@@ -231,7 +242,7 @@ def harden(
     if store is not None:
         store.save(contract)
 
-    return HardeningReport(
+    report = HardeningReport(
         contract=contract,
         original_version_id=original.version_id,
         gaps=gaps,
@@ -243,6 +254,16 @@ def harden(
         analysis_tx=analysis_tx,
         analysis_fingerprint=analysis_fingerprint,
     )
+
+    # Last, and deliberately after the anchor: the narrative is a reading of
+    # findings that are already fixed and already attested. It cannot influence
+    # what was analysed, what was anchored, or the fingerprint — and if it
+    # fails, everything above it has already happened.
+    if llm is not None:
+        from .narrative import summarise
+        report.narrative = summarise(report, llm)
+
+    return report
 
 
 # Resolved: the fingerprint is Keccak-256 over a canonical byte form, matching

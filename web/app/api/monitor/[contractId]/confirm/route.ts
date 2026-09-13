@@ -8,6 +8,7 @@ import db from "@/lib/server/db";
 import registry from "@/lib/server/services/contractsRegistry";
 import threadAuth from "@/lib/server/services/threadAuth";
 import { authFromRequest } from "@/lib/server/session";
+import demo from "@/lib/server/demo";
 
 const AGENT_URL = process.env.AGENT_SERVICE_URL || "http://127.0.0.1:5001";
 
@@ -47,6 +48,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ con
   const { obligation_id, outcome } = body;
   if (!obligation_id || !["performed", "not_yet", "breached"].includes(outcome)) {
     return NextResponse.json({ error: "obligation_id and a valid outcome are required" }, { status: 400 });
+  }
+
+  // Staged demo: the confirmation lands in the in-process overlay, so the
+  // scenario resets cleanly instead of accumulating across demos.
+  if (demo.isDemoContract(contractId)) {
+    const label = participant === "owner"
+      ? demo.scenario.LABELS.p_buyer
+      : demo.scenario.LABELS.p_supplier;
+    const result = demo.confirmObligation(obligation_id, outcome, label);
+    if (!result.ok) return NextResponse.json({ error: result.error }, { status: 400 });
+    return NextResponse.json({ ok: true, message: result.message, state: result.state, anchored: true });
   }
 
   try {

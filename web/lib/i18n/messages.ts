@@ -22,7 +22,7 @@ export const messages = {
 
   // ----------------------------------------------------------------- topbar
   "topbar.tagline": {
-    fr: "Insaf — justice commerciale pour les PME",
+    fr: "Insaf — justice commerciale pour les TPME",
     ar: "إنصاف — عدالة تجارية للمؤسسات الصغرى والمتوسطة"
   },
   "topbar.signout": { fr: "Se déconnecter", ar: "تسجيل الخروج" },
@@ -35,7 +35,7 @@ export const messages = {
   "landing.titleLogin": { fr: "Se connecter à Insaf", ar: "تسجيل الدخول إلى إنصاف" },
   "landing.titleRegister": { fr: "Créer un compte", ar: "إنشاء حساب" },
   "landing.intro": {
-    fr: "Pour les dirigeants de PME : consolider un contrat, inviter l'autre partie, conserver une trace infalsifiable et régler les litiges avant le tribunal.",
+    fr: "Pour les dirigeants de TPME : consolider un contrat, inviter l'autre partie, conserver une trace infalsifiable et régler les litiges avant le tribunal.",
     ar: "للمؤسسات الصغرى والمتوسطة: تحصين عقودك، دعوة الطرف الآخر، حفظ سجل مقاوم للتلاعب، وتسوية النزاعات قبل اللجوء إلى المحكمة."
   },
   "landing.email": { fr: "E-mail", ar: "البريد الإلكتروني" },
@@ -78,7 +78,7 @@ export const messages = {
     ar: "لا شيء بعد. أنشئ عقدًا عبر «عقد جديد» أعلاه، أو أودِع عقدًا قائمًا لتحليله."
   },
   "dashboard.errLoad": { fr: "impossible de charger vos contrats", ar: "تعذّر تحميل عقودك" },
-  "dashboard.msme": { fr: "MSME", ar: "المؤسسة" },
+  "dashboard.msme": { fr: "TPME", ar: "المؤسسة" },
   "dashboard.counterparty": { fr: "Contrepartie", ar: "الطرف المقابل" },
   "dashboard.versions": { fr: "version", ar: "إصدار" },
   "dashboard.versionsMany": { fr: "versions", ar: "إصدارات" },
@@ -476,5 +476,150 @@ export const messages = {
   "severity.critical": { fr: "critique", ar: "حرجة" },
   "severity.high": { fr: "élevée", ar: "عالية" },
   "severity.medium": { fr: "moyenne", ar: "متوسطة" },
-  "severity.low": { fr: "faible", ar: "منخفضة" }
+  "cs.title": { fr: "Avant d'entrer dans la conversation", ar: "قبل الدخول إلى المحادثة" },
+  "cs.intro": {
+    fr: "Ce fil est un registre partagé. Avant d'y participer, indiquez ce que vous acceptez.",
+    ar: "هذه المحادثة سجلّ مشترك. قبل المشاركة فيها، بيّن ما توافق عليه."
+  },
+  "cs.required": { fr: "obligatoire", ar: "إلزامي" },
+  "cs.optional": { fr: "facultatif", ar: "اختياري" },
+  "cs.recordTitle": { fr: "Enregistrement de la conversation", ar: "تسجيل المحادثة" },
+  "cs.recordBody": {
+    fr: "Vos messages, les dates et les confirmations d'échéances sont enregistrés et conservés. Ils constituent la trace du contrat et ne peuvent pas être supprimés une fois écrits.",
+    ar: "تُسجَّل رسائلك وتواريخها وتأكيدات الآجال وتُحفَظ. تشكّل أثر العقد ولا يمكن حذفها بعد كتابتها."
+  },
+  "cs.shareTitle": { fr: "Visibilité par l'autre partie", ar: "اطّلاع الطرف الآخر" },
+  "cs.shareBody": {
+    fr: "L'autre partie voit exactement le même fil que vous, y compris vos messages et vos confirmations. Rien ne lui est caché, et rien ne vous est caché.",
+    ar: "يرى الطرف الآخر المحادثة نفسها تمامًا، بما في ذلك رسائلك وتأكيداتك. لا شيء يُخفى عنه ولا عنك."
+  },
+  "cs.termsTitle": { fr: "Empreinte sur registre infalsifiable", ar: "بصمة على سجل غير قابل للتغيير" },
+  "cs.termsBody": {
+    fr: "L'empreinte de certains événements (confirmation d'une échéance, ouverture d'un litige, accord signé) est inscrite sur un registre infalsifiable. Le contenu de vos messages n'y est jamais inscrit — seulement une empreinte et une date.",
+    ar: "تُدوَّن بصمة بعض الأحداث (تأكيد أجل، فتح نزاع، اتفاق موقَّع) على سجل غير قابل للتغيير. لا يُدوَّن مضمون رسائلك أبدًا، بل البصمة والتاريخ فقط."
+  },
+  "cs.notifyTitle": { fr: "Rappels d'échéance", ar: "تذكيرات الآجال" },
+  "cs.notifyBody": {
+    fr: "Recevoir un rappel neutre lorsqu'une échéance approche. Vous pouvez participer sans l'activer.",
+    ar: "تلقّي تذكير محايد عند اقتراب أجل. يمكنك المشاركة دون تفعيله."
+  },
+  "cs.rights": {
+    fr: "Vous pouvez demander une copie de vos données ou retirer votre consentement à tout moment en écrivant à la partie qui vous a invité. Le retrait vaut pour l'avenir : il n'efface pas les faits déjà enregistrés, qui font partie de la trace du contrat.",
+    ar: "يمكنك طلب نسخة من بياناتك أو سحب موافقتك في أي وقت بمراسلة الطرف الذي دعاك. يسري السحب على المستقبل ولا يمحو الوقائع المسجَّلة سابقًا، فهي جزء من أثر العقد."
+  },
+  "cs.acceptAll": { fr: "Tout accepter", ar: "قبول الكل" },
+  "cs.continue": { fr: "Accepter et continuer", ar: "الموافقة والمتابعة" },
+  "cs.mustAccept": {
+    fr: "Les trois premiers points sont nécessaires pour participer au fil.",
+    ar: "النقاط الثلاث الأولى ضرورية للمشاركة في المحادثة."
+  },
+  "cs.errFailed": { fr: "enregistrement du consentement impossible", ar: "تعذّر تسجيل الموافقة" },
+  "cs.recorded": { fr: "Consentement enregistré le {date}", ar: "سُجِّلت الموافقة في {date}" },
+  "severity.low": { fr: "faible", ar: "منخفضة" },
+
+  // ------------------------------------------------------- staged demo
+  "demo.bar": { fr: "Scénario de démonstration", ar: "سيناريو تجريبي" },
+  "demo.barBody": {
+    fr: "Contrat réel, anomalies réelles, litige en cours. Toutes les données sont préchargées.",
+    ar: "عقد حقيقي، مخالفات حقيقية، نزاع جارٍ. جميع البيانات محمّلة مسبقًا."
+  },
+  "demo.reset": { fr: "Réinitialiser", ar: "إعادة التعيين" },
+  "demo.resetDone": { fr: "Scénario réinitialisé.", ar: "أُعيد ضبط السيناريو." },
+
+  // ------------------------------------------------------- monitoring
+  "ms.title": { fr: "Suivi des échéances", ar: "متابعة الآجال" },
+  "ms.open": { fr: "{n} en attente", ar: "{n} قيد الانتظار" },
+  "ms.done": { fr: "{n} confirmée(s)", ar: "{n} مؤكَّدة" },
+  "ms.expected": { fr: "attendu", ar: "المتوقَّع" },
+  "ms.received": { fr: "reçu", ar: "المستلَم" },
+  "ms.short": { fr: "manquant : {n}", ar: "الناقص: {n}" },
+  "ms.evidence": { fr: "Pièce attendue : {what}", ar: "الوثيقة المطلوبة: {what}" },
+  "ms.anchoredTag": { fr: "ancrée", ar: "مثبَّتة" },
+  "ms.openDispute": { fr: "Voir le règlement du litige", ar: "عرض تسوية النزاع" },
+
+  // ------------------------------------------------------- analysis
+  "an.title": { fr: "Analyse du contrat", ar: "تحليل العقد" },
+  "an.statClauses": { fr: "Clauses analysées", ar: "فصول محلَّلة" },
+  "an.statGaps": { fr: "Clauses manquantes", ar: "فصول ناقصة" },
+  "an.statRisks": { fr: "Anomalies relevées", ar: "مخالفات مرصودة" },
+  "an.grounded": {
+    fr: "{n} des {total} recommandations citent un article retrouvé dans le corpus.",
+    ar: "{n} من أصل {total} توصيات تستند إلى فصل مسترجَع من المدوّنة."
+  },
+  "an.kindUnenforceable": { fr: "non conforme", ar: "غير مطابق" },
+  "an.kindAmbiguous": { fr: "ambigu", ar: "غامض" },
+  "an.kindAsymmetric": { fr: "déséquilibré", ar: "غير متوازن" },
+  "an.current": { fr: "Rédaction actuelle", ar: "الصيغة الحالية" },
+  "an.proposed": { fr: "Rédaction proposée", ar: "الصيغة المقترحة" },
+  "an.notApplied": { fr: "non appliquée", ar: "غير مطبَّقة" },
+  "an.verified": { fr: "article vérifié", ar: "فصل مُتحقَّق منه" },
+  "an.basis": { fr: "Base légale", ar: "الأساس القانوني" },
+  "an.noBasis": { fr: "Aucune base légale retrouvée", ar: "لم يُعثر على أساس قانوني" },
+  "an.gapsTitle": { fr: "Ce que le contrat ne dit pas", ar: "ما لا ينصّ عليه العقد" },
+  "an.risksTitle": { fr: "Anomalies dans les clauses écrites", ar: "مخالفات في الفصول المكتوبة" },
+  "an.neverModified": {
+    fr: "Le texte du contrat n'est jamais modifié par le système. Une rédaction proposée n'entre en vigueur que si les deux parties la signent.",
+    ar: "لا يعدّل النظام نصّ العقد أبدًا. لا تدخل أي صيغة مقترحة حيّز النفاذ إلا بتوقيع الطرفين."
+  },
+
+  // ------------------------------------------------------- dispute
+  "dp.title": { fr: "Règlement du litige", ar: "تسوية النزاع" },
+  "dp.subtitle": {
+    fr: "Les deux parties voient exactement ce tableau, les mêmes chiffres et les mêmes options.",
+    ar: "يرى الطرفان هذا الجدول نفسه، وبالأرقام والخيارات ذاتها."
+  },
+  "dp.governing": { fr: "Version applicable", ar: "النسخة المنطبقة" },
+  "dp.claims": { fr: "Ce que chaque partie demande", ar: "ما يطلبه كل طرف" },
+  "dp.ledger": { fr: "Tableau des faits", ar: "جدول الوقائع" },
+  "dp.agreed": { fr: "établi", ar: "ثابت" },
+  "dp.disputed": { fr: "contesté", ar: "متنازع فيه" },
+  "dp.unsupported": { fr: "non étayé", ar: "غير مدعوم" },
+  "dp.batna": { fr: "Si vous allez au tribunal", ar: "إذا لجأتم إلى المحكمة" },
+  "dp.duration": { fr: "Durée estimée", ar: "المدة المقدَّرة" },
+  "dp.cost": { fr: "Coût estimé", ar: "الكلفة المقدَّرة" },
+  "dp.costPct": { fr: "Part de la créance", ar: "نسبة من الدين" },
+  "dp.claimAmount": { fr: "Montant en jeu", ar: "المبلغ موضوع النزاع" },
+  "dp.source": { fr: "Source", ar: "المصدر" },
+  "dp.options": { fr: "Options de règlement", ar: "خيارات التسوية" },
+  "dp.optionsNote": {
+    fr: "Aucune option n'est recommandée : le choix appartient aux parties. Un accord ne prend effet que lorsque les deux parties l'ont accepté.",
+    ar: "لا يُوصى بأي خيار: القرار للطرفين. لا يسري الاتفاق إلا بقبول الطرفين معًا."
+  },
+  "dp.accept": { fr: "Accepter cette option", ar: "قبول هذا الخيار" },
+  "dp.decline": { fr: "Écarter", ar: "استبعاد" },
+  "dp.youAccepted": { fr: "vous avez accepté", ar: "لقد قبلتَ" },
+  "dp.otherAccepted": { fr: "l'autre partie a accepté", ar: "قبل الطرف الآخر" },
+  "dp.bothAccepted": { fr: "accord conclu", ar: "تمّ الاتفاق" },
+  "dp.youDeclined": { fr: "vous avez écarté", ar: "لقد استبعدتَ" },
+  "dp.waiting": { fr: "en attente de l'autre partie", ar: "بانتظار الطرف الآخر" },
+  "dp.fixesRoot": { fr: "corrige aussi le contrat", ar: "يصحّح العقد أيضًا" },
+  "dp.suggestions": { fr: "Ce que le système observe", ar: "ما يلاحظه النظام" },
+  "dp.suggestionsNote": {
+    fr: "Observations adressées aux deux parties, jamais à l'une contre l'autre.",
+    ar: "ملاحظات موجَّهة إلى الطرفين معًا، لا إلى أحدهما ضد الآخر."
+  },
+  "dp.lawyer": { fr: "Relecture par un avocat requise avant signature.", ar: "تُشترط مراجعة محامٍ قبل التوقيع." },
+  "dp.settled": { fr: "Litige réglé", ar: "سُوّي النزاع" },
+  "dp.settledBody": {
+    fr: "Les deux parties ont accepté « {label} ». L'accord vaut transaction obligatoire entre les parties ; son empreinte est ancrée.",
+    ar: "قبل الطرفان «{label}». يُعدّ الاتفاق صلحًا ملزمًا بين الطرفين، وبصمته مثبَّتة."
+  },
+  "dp.open": { fr: "Ouvrir le règlement", ar: "فتح التسوية" },
+  "dp.backThread": { fr: "Retour au fil", ar: "العودة إلى المحادثة" },
+  "dp.noneYet": { fr: "Aucun litige ouvert sur ce contrat.", ar: "لا نزاع مفتوح بشأن هذا العقد." },
+  "dp.anchoredAt": { fr: "Ouverture du litige ancrée", ar: "فتح النزاع مثبَّت" },
+
+  // ------------------------------------------------------- verify
+  "vf.button": { fr: "Vérifier l'intégrité", ar: "التحقّق من السلامة" },
+  "vf.checking": { fr: "Vérification…", ar: "جارٍ التحقّق…" },
+  "vf.ok": { fr: "Empreinte conforme", ar: "البصمة مطابقة" },
+  "vf.okBody": {
+    fr: "Le texte conservé correspond exactement à l'empreinte ancrée ({version}). Aucune modification depuis l'ancrage.",
+    ar: "النص المحفوظ يطابق تمامًا البصمة المثبَّتة ({version}). لا تعديل منذ التثبيت."
+  },
+  "vf.fail": { fr: "Empreinte non conforme", ar: "البصمة غير مطابقة" },
+  "vf.failBody": {
+    fr: "Le texte conservé ne correspond plus à l'empreinte ancrée. C'est exactement ce que l'ancrage sert à détecter.",
+    ar: "لم يعد النص المحفوظ يطابق البصمة المثبَّتة. هذا بالضبط ما يكشفه التثبيت."
+  }
 } as const satisfies Record<string, { fr: string; ar: string }>;

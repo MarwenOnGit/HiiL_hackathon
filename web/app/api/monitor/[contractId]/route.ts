@@ -11,6 +11,7 @@ import db from "@/lib/server/db";
 import registry from "@/lib/server/services/contractsRegistry";
 import threadAuth from "@/lib/server/services/threadAuth";
 import { authFromRequest } from "@/lib/server/session";
+import demo from "@/lib/server/demo";
 
 const AGENT_URL = process.env.AGENT_SERVICE_URL || "http://127.0.0.1:5001";
 
@@ -42,6 +43,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ cont
       : null;
   if (!participant) {
     return NextResponse.json({ error: "not a participant in this thread" }, { status: 403 });
+  }
+
+  // Staged demo: milestones come from the fixture, not the agent.
+  if (demo.isDemoContract(contractId)) {
+    return NextResponse.json(demo.monitoring());
   }
 
   let result;

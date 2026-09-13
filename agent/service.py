@@ -13,16 +13,18 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request, UploadFile, File, Form
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from blockchain_client.client import ChainError
 from chat_assistant import answer_question
 from config import load_profile
+from core.contract_store import AppendOnlyViolation
 from core.hashing import content_hash
 from core.identity import IDENTITY_MODEL, derive_pseudonym
 from core.schemas import Party, LegalIdentity
 from core.taxonomy import DocType, ReviewStatus
-from core.version_manager import add_version
+from core.version_manager import LineageError, add_version
 from hardening_agent import harden
 from hardening_agent.builder import BuildError, build_contract_text, buyer_and_supplier, essentials_meta
 from hardening_agent.ingest import get_engine
@@ -39,6 +41,55 @@ from resolution_agent.fact_reconciler import Statement
 from runtime import RUNTIME
 
 app = FastAPI(title="Insaf agent service", version="3.0")
+
+
+def _refusal(status_code: int, exc: Exception) -> JSONResponse:
+    """One shape for every refusal the foundation raises.
+
+    `error` and `detail` carry the same sentence: the Next app reads `error`
+    (see web/app/harden/page.tsx) while FastAPI's own HTTPException produces
+    `detail`, and a caller should not have to know which layer refused it.
+    """
+    return JSONResponse(status_code=status_code,
+                        content={"error": str(exc), "detail": str(exc)})
+
+
+# The core layer refuses things on purpose, and the reason it gives IS the
+# useful part — "this contract already has versions" tells the user to pick a
+# new id, where "Internal Server Error" tells them nothing. Registered on the
+# app rather than caught per-handler so the module docstring's promise holds
+# for endpoints added later too, which is precisely how /harden, /contracts/
+# build and /sign each came to answer a bare 500.
+@app.exception_handler(LineageError)
+def _lineage_conflict(_request: Request, exc: LineageError) -> JSONResponse:
+    # A conflict, not a bad request: the payload is well-formed and the
+    # existing lineage is what rejects it (invariant 1).
+    return _refusal(409, exc)
+
+
+@app.exception_handler(AppendOnlyViolation)
+def _append_only_conflict(_request: Request, exc: AppendOnlyViolation) -> JSONResponse:
+    return _refusal(409, exc)
+
+
+@app.exception_handler(ChainError)
+def _chain_unavailable(_request: Request, exc: ChainError) -> JSONResponse:
+    # The chain is a service behind us; its failure is not the caller's fault.
+    return _refusal(502, exc)
+
+
+def _lang(request: Request | None) -> str:
+    """The UI language for generated copy, defaulting to French.
+
+    `request` is optional because one caller genuinely has no header to offer:
+    /admin/advance is posted by the demo clock as JSON with no UI context.
+    Language is data, not logic (invariant 8) — a caller that says nothing
+    about language gets the default, never an error.
+    """
+    header = request.headers.get("x-insaf-lang") if request is not None else None
+    lang = (header or "fr").lower()
+    return lang if lang in ("fr", "ar") else "fr"
+
 
 DEFAULT_PARTIES = [
     Party("p_buyer", "msme_owner", "Atelier Trabelsi",
@@ -402,9 +453,7 @@ def monitoring_for(contract, request: Request | None = None) -> dict[str, Any]:
     pretending to have a plan (invariant 6 — absence is a fact)."""
     if not contract.metadata.get("analysis_fingerprint"):
         return {"active": False, "reason": "no agent analysis yet"}
-    lang = (request.headers.get("x-insaf-lang") or "fr").lower()
-    if lang not in ("fr", "ar"):
-        lang = "fr"
+    lang = _lang(request)
     now = monitor_as_of(contract)
     milestones = build_schedule(contract, now)
     return {
@@ -466,9 +515,7 @@ def confirm(contract_id: str, obligation_id: str, body: ConfirmBody, request: Re
     recorded, anchored fact (performed / breached) or a timestamped
     observation (not_yet) — precisely the discipline of the obligation state
     machine: silence, too, is a fact, never missed."""
-    lang = (request.headers.get("x-insaf-lang") or "fr").lower()
-    if lang not in ("fr", "ar"):
-        lang = "fr"
+    lang = _lang(request)
     if not RUNTIME.store.exists(contract_id):
         raise HTTPException(status_code=404, detail="unknown contract")
     contract = RUNTIME.store.get(contract_id)
@@ -494,9 +541,7 @@ def confirm(contract_id: str, obligation_id: str, body: ConfirmBody, request: Re
 def escalate(contract_id: str, body: EscalateBody, request: Request) -> dict[str, Any]:
     """A missed milestone escalates into the amicable phase — attempted
     resolution, anchored as DISPUTE_OPENED before anything further."""
-    lang = (request.headers.get("x-insaf-lang") or "fr").lower()
-    if lang not in ("fr", "ar"):
-        lang = "fr"
+    lang = _lang(request)
     if not RUNTIME.store.exists(contract_id):
         raise HTTPException(status_code=404, detail="unknown contract")
     contract = RUNTIME.store.get(contract_id)
@@ -510,7 +555,7 @@ def escalate(contract_id: str, body: EscalateBody, request: Request) -> dict[str
 
 
 @app.post("/admin/advance")
-def admin_advance(body: AdvanceBody) -> dict[str, Any]:
+def admin_advance(body: AdvanceBody, request: Request) -> dict[str, Any]:
     """Demo-only time machine: shifts the monitoring *view* N days forward so
     the check-in flow can be demonstrated. It never writes to version history
     or the chain — an offset is not an event (invariant 1)."""
@@ -530,7 +575,7 @@ def admin_advance(body: AdvanceBody) -> dict[str, Any]:
             current = 0
         contract.metadata["monitor_offset_days"] = current + int(body.days)
     RUNTIME.store.save(contract)
-    return monitoring_for(contract)
+    return monitoring_for(contract, request)
 
 
 @app.get("/contracts/{contract_id}/history")

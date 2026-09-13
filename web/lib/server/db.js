@@ -42,6 +42,7 @@ function ensureStore() {
       users: new Map(), // keyed by user_id
       sessions: new Map(), // keyed by session token (the cookie value)
       contractOwners: new Map(), // keyed by contract_id → { user_id, source, created_at }
+      consents: new Map(), // keyed by `${contract_id}:${party}` → consent record
     };
   }
   return globalThis[key];
@@ -66,7 +67,7 @@ function toMap(obj) {
 // must not evict yesterday's relationships from it.
 const ALL_KEYS = [
   "relationships", "contracts", "agreementsOnchain", "pendingConfirmations",
-  "threads", "users", "sessions", "contractOwners",
+  "threads", "users", "sessions", "contractOwners", "consents",
 ];
 
 function persist() {
@@ -119,6 +120,7 @@ const threads = store.threads;
 const users = store.users;
 const sessions = store.sessions;
 const contractOwners = store.contractOwners;
+const consents = store.consents;
 
 function saveRelationship(rel) {
   relationships.set(rel.relationship_id, rel);
@@ -246,6 +248,28 @@ function deleteSession(token) {
 // v3 ownership: a contract belongs to exactly one MSME user, whoever created
 // it (wizard generate, demo seed or agent hardening). source records which
 // world the contract lives in, so registry-aware routes know how to resolve it.
+// Recorded consent for a thread participant. Kept as an append-only fact with
+// its own timestamp: the point of asking is to be able to show, later, exactly
+// what was agreed to and when.
+function consentKey(contractId, party) {
+  return `${contractId}:${party}`;
+}
+
+function saveConsent(contractId, party, record) {
+  consents.set(consentKey(contractId, party), record);
+  persist();
+  return record;
+}
+
+function getConsent(contractId, party) {
+  return consents.get(consentKey(contractId, party)) || null;
+}
+
+function clearConsent(contractId, party) {
+  consents.delete(consentKey(contractId, party));
+  persist();
+}
+
 function saveContractOwner(contractId, userId, source) {
   const record = contractOwners.get(contractId);
   if (record) return record; // first writer wins — never steal an existing contract
@@ -291,6 +315,9 @@ module.exports = {
   saveSession,
   getSession,
   deleteSession,
+  saveConsent,
+  getConsent,
+  clearConsent,
   saveContractOwner,
   getContractOwner,
   hasContractOwner,

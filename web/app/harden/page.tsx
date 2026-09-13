@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { useI18n, type MsgKey } from "@/lib/i18n";
@@ -138,11 +138,15 @@ export default function HardenPage() {
     { id: 2, title: "", text: "" }
   ]);
 
-  async function syncHealth() {
-    const { body } = await api<Health>("/api/agent/health");
-    setHealth(body);
-  }
-  if (!health) syncHealth().catch(() => {});
+  // Runs once on mount. This used to sit in the render body, where a falsy
+  // response would never latch `health` and the page would refetch forever.
+  useEffect(() => {
+    let live = true;
+    api<Health>("/api/agent/health")
+      .then(({ body }) => { if (live) setHealth(body || { agent_available: false }); })
+      .catch(() => { if (live) setHealth({ agent_available: false }); });
+    return () => { live = false; };
+  }, []);
 
   function show(next: Step) {
     setStep(next);
@@ -391,7 +395,7 @@ export default function HardenPage() {
                   {t("demo.fill")}
                 </button>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 12 }}>
+              <div className="party-grid">
                 {[0, 1].map((i) => (
                   <div key={i} style={{ border: "1px solid var(--border)", borderRadius: 8, padding: 12 }}>
                     <label style={{ fontWeight: 600, fontSize: 13 }}>{t(i === 0 ? "parties.a" : "parties.b")}</label>
@@ -557,10 +561,26 @@ export default function HardenPage() {
                 <pre style={{ whiteSpace: "pre-wrap", fontSize: 12.5, margin: 0 }}>{(builtText)}</pre>
               </div>
             )}
-            <p className="muted" style={{ marginTop: 12 }}>
-              {findings.clauses.length} · {findings.gaps.length} ·{" "}
-              {findings.grounding.total_recommendations} ({findings.grounding.grounded_recommendations})
-            </p>
+            <div className="grid-stats" style={{ marginTop: 14 }}>
+              <div className="stat">
+                <div className="stat-num">{findings.clauses.length}</div>
+                <div className="stat-label">{t("an.statClauses")}</div>
+              </div>
+              <div className="stat">
+                <div className="stat-num">{findings.gaps.length}</div>
+                <div className="stat-label">{t("an.statGaps")}</div>
+              </div>
+              <div className="stat">
+                <div className="stat-num">{findings.grounding.total_recommendations}</div>
+                <div className="stat-label">{t("an.statRisks")}</div>
+              </div>
+            </div>
+            <div className={"banner " + (findings.grounding.grounded_recommendations > 0 ? "banner-ok" : "banner-warn")}>
+              {t("an.grounded", {
+                n: findings.grounding.grounded_recommendations,
+                total: findings.grounding.total_recommendations
+              })}
+            </div>
             {findings.anchor?.doc_id && (
               <div className="row" style={{ marginTop: 8 }}>
                 <span className="pill pill-ok">{t("findings.contractAnchored")}</span>
@@ -587,7 +607,7 @@ export default function HardenPage() {
               </div>
             )}
             <div className="card">
-              <h3>{t("findings.missingCount")}</h3>
+              <h3>{t("findings.missingCount")} <span className="pill pill-warn">{findings.gaps.length}</span></h3>
               {findings.gaps.map((g, i) => (
                 <div className="row" key={i}>
                   <span className={"pill " + (g.severity === "critical" ? "pill-danger" : "pill-warn")}>
@@ -602,7 +622,7 @@ export default function HardenPage() {
               {findings.gaps.length === 0 && <p className="muted">{t("findings.noneMissing")}</p>}
             </div>
             <div className="card" style={{ marginTop: 12 }}>
-              <h3>{t("findings.recommendationsCount")}</h3>
+              <h3>{t("findings.recommendationsCount")} <span className="pill pill-accent">{findings.recommendations.length}</span></h3>
               <p className="muted" style={{ fontSize: 12.5, marginTop: 4 }}>{t("findings.anomalyNote")}</p>
               {findings.recommendations.map((r, i) => (
                 <div key={i} style={{ padding: "10px 0", borderTop: "1px solid var(--border)", fontSize: 13.5 }}>

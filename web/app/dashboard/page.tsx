@@ -10,7 +10,11 @@ import InvitePanel from "@/components/InvitePanel";
 
 interface Row {
   contract_id: string;
-  source: "wizard" | "hardened";
+  source: "wizard" | "hardened" | "demo";
+  demo?: boolean;
+  risk_counts?: { unenforceable: number; ambiguous: number; asymmetric: number };
+  open_milestones?: number;
+  dispute_status?: string;
   msme_owner: string | null;
   counterparty: string | null;
   generated_at: string | null;
@@ -84,6 +88,23 @@ export default function DashboardPage() {
           {t("dashboard.intro")}
         </p>
 
+        {rows && rows.some((r) => r.source === "demo") && (
+          <div className="demo-bar" style={{ marginTop: 14 }}>
+            <strong>{t("demo.bar")}</strong>
+            <span>{t("demo.barBody")}</span>
+            <span className="top-spacer" />
+            <button
+              className="btn btn-sm"
+              onClick={async () => {
+                await api("/api/demo/reset", { method: "POST" });
+                await load();
+              }}
+            >
+              {t("demo.reset")}
+            </button>
+          </div>
+        )}
+
         <div className="grid-stats" style={{ marginTop: 14 }}>
           <div className="stat">
             <div className="stat-num">{rows ? rows.length : "–"}</div>
@@ -128,9 +149,9 @@ export default function DashboardPage() {
                   <div className="row-title">
                     {esc(r.msme_owner || t("dashboard.msme"))} → {esc(r.counterparty || t("dashboard.counterparty"))}
                     <span className="pill pill-accent" style={{ marginInlineStart: 8 }}>
-                      {r.source === "wizard" ? t("common.wizard") : t("common.hardened")}
+                      {r.source === "wizard" ? t("common.wizard") : r.source === "demo" ? t("common.demo") : t("common.hardened")}
                     </span>
-                    {r.source === "hardened" ? (
+                    {r.source === "hardened" || r.source === "demo" ? (
                       <span className="pill pill-ok" style={{ marginInlineStart: 6 }}>{t("common.anchored")}</span>
                     ) : r.signed ? (
                       <span className="pill pill-ok" style={{ marginInlineStart: 6 }}>{t("common.signed")}</span>
@@ -145,6 +166,15 @@ export default function DashboardPage() {
                     )}
                     {r.consent_tier && <> · {t("dashboard.tier")} {esc(r.consent_tier)}</>}
                     {r.generated_at && <> · {fmtTime(r.generated_at)}</>}
+                    {r.risk_counts && r.risk_counts.unenforceable > 0 && (
+                      <> · <span className="pill pill-danger">{r.risk_counts.unenforceable} {t("an.kindUnenforceable")}</span></>
+                    )}
+                    {typeof r.open_milestones === "number" && r.open_milestones > 0 && (
+                      <> <span className="pill pill-warn">{t("ms.open", { n: r.open_milestones })}</span></>
+                    )}
+                    {r.dispute_status === "open" && (
+                      <> <span className="pill pill-warm">{t("dp.title")}</span></>
+                    )}
                     {r.invite_active && (
                       <>
                         {" · "}
@@ -159,7 +189,12 @@ export default function DashboardPage() {
                   <Link href={`/contracts/${encodeURIComponent(r.contract_id)}`} className="btn btn-sm">
                     {t("dashboard.details")}
                   </Link>
-                  {r.signed || r.source === "hardened" ? (
+                  {r.source === "demo" && (
+                    <Link href={`/dispute?contract_id=${encodeURIComponent(r.contract_id)}`} className="btn btn-sm btn-warm">
+                      {t("dp.open")}
+                    </Link>
+                  )}
+                  {r.signed || r.source === "hardened" || r.source === "demo" ? (
                     <Link href={`/thread?contract_id=${encodeURIComponent(r.contract_id)}`} className="btn btn-sm btn-primary">
                       {t("dashboard.thread")}
                       {unread[r.contract_id] > 0 && (

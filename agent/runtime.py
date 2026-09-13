@@ -11,7 +11,9 @@ import os
 from pathlib import Path
 
 from blockchain_client import ContractResolver, InMemoryChain
+from config import load_llm_settings
 from core.contract_store import JsonFileStore
+from core.llm_client import build_client
 from rag import Retriever, build_index
 from rag.chunker import chunk_article_file, chunk_clause_library_file
 from core.taxonomy import CorpusType, Language
@@ -58,6 +60,34 @@ class Runtime:
         self.corpus_counts = load_corpus(self.index)
         self.retriever = Retriever(self.index)
         self.resolver = ContractResolver(self.chain, self.store)
+        # Built once. A deployment with no API key gets NullLLMClient and runs
+        # fully deterministic — a supported mode, reported by /health rather
+        # than discovered when a narrative silently fails to appear.
+        self.llm_settings = load_llm_settings()
+        self.llm = build_client(self.llm_settings)
+
+    @property
+    def llm_enabled(self) -> bool:
+        return bool(self.llm_settings.get("enabled"))
+
+    def llm_status(self) -> dict:
+        """What /health may say about the model backend. Never the key."""
+        describe = getattr(self.llm, "describe", None)
+        status = {
+            "enabled": self.llm_enabled,
+            "client": type(self.llm).__name__,
+            # Stated so the UI never has to infer why prose is missing.
+            "reason": "" if self.llm_enabled else (
+                f"no API key in ${self.llm_settings.get('api_key_env', 'OPENROUTER_API_KEY')}"
+                " — agents run deterministic (rule-based) and say so"
+            ),
+        }
+        if describe is not None:
+            status.update(describe())
+        else:
+            status["provider"] = None
+            status["model"] = None
+        return status
 
     @property
     def corpus_size(self) -> int:

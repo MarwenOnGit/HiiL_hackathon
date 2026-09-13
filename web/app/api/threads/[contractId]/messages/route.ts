@@ -8,6 +8,7 @@ import db from "@/lib/server/db";
 import registry from "@/lib/server/services/contractsRegistry";
 import threadAuth from "@/lib/server/services/threadAuth";
 import { authFromRequest } from "@/lib/server/session";
+import demo from "@/lib/server/demo";
 
 async function isExecuted(contractId: string): Promise<boolean> {
   return registry.contractExecuted(contractId);
@@ -29,15 +30,23 @@ function isConfirmedCounterparty(req: NextRequest, auth: any, contractId: string
 }
 
 function participantLabels(contractId: string) {
+  if (demo.isDemoContract(contractId)) {
+    return {
+      owner: demo.scenario.LABELS.p_buyer,
+      counterparty: demo.scenario.LABELS.p_supplier
+    };
+  }
   const wizard = db.getContract(contractId);
   if (wizard) {
     const rel = db.getRelationship(wizard.relationship_id);
     return {
-      owner: rel ? rel.parties.msme_owner.name : "MSME owner",
-      counterparty: rel ? rel.parties.counterparty.name : "Counterparty"
+      owner: rel ? rel.parties.msme_owner.name : null,
+      counterparty: rel ? rel.parties.counterparty.name : null
     };
   }
-  return { owner: "MSME owner", counterparty: "Counterparty" };
+  // null, not an English default: the client renders a translated label so a
+  // French or Arabic thread never shows "MSME owner".
+  return { owner: null, counterparty: null };
 }
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ contractId: string }> }) {
@@ -52,7 +61,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ cont
       ? "counterparty"
       : null;
   return NextResponse.json({
-    messages: db.getMessages(contractId),
+    messages: demo.isDemoContract(contractId) ? demo.allMessages() : db.getMessages(contractId),
     participants: participantLabels(contractId),
     viewer
   });
@@ -86,6 +95,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ con
   }
   if (!allowed) {
     return NextResponse.json({ error: "not authorized to post to this thread" }, { status: 403 });
+  }
+
+  if (demo.isDemoContract(contractId)) {
+    const message = demo.postMessage(sender, messageBody.trim());
+    return NextResponse.json({ message }, { status: 201 });
   }
 
   const message = { sender, body: messageBody.trim(), sent_at: new Date().toISOString() };

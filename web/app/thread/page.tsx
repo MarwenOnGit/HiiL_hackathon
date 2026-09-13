@@ -1,11 +1,13 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api, esc, fmtDate, fmtTime, getMe, markSeen, type Me } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import TopBar from "@/components/TopBar";
 import InvitePanel from "@/components/InvitePanel";
+import ConsentGate from "@/components/ConsentGate";
 
 interface Message {
   sender: "owner" | "counterparty" | "insaf";
@@ -38,6 +40,10 @@ interface Milestone {
   days_until: number | null;
   alert: string | null;
   check_in: string;
+  evidence_required?: string;
+  quantity?: { expected: number; actual: number; unit: string } | null;
+  amount?: { value: number; currency: string } | null;
+  anchored?: boolean;
 }
 
 interface Monitoring {
@@ -47,6 +53,8 @@ interface Monitoring {
   phase_reference?: string | null;
   milestones?: Milestone[];
   reason?: string;
+  phase_note?: string;
+  summary?: { total: number; performed: number; open: number };
 }
 
 function ThreadInner() {
@@ -60,12 +68,15 @@ function ThreadInner() {
   const [me, setMe] = useState<Me | null>(null);
   const [role, setRole] = useState<"owner" | "counterparty" | null>(null);
   const [messages, setMessages] = useState<Message[] | null>(null);
-  const [participants, setParticipants] = useState<{ owner: string; counterparty: string } | null>(null);
+  const [participants, setParticipants] = useState<{ owner: string | null; counterparty: string | null } | null>(null);
   const [gate, setGate] = useState<string>("");
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [spell, setSpell] = useState("");
   const [monitoring, setMonitoring] = useState<Monitoring | null>(null);
+  // A guest joining by token consents before the thread is shown. Owners have
+  // already accepted the terms when they created the contract.
+  const [consented, setConsented] = useState(false);
 
   const loadMonitor = useCallback(async () => {
     if (!contractId) return;
@@ -86,7 +97,7 @@ function ThreadInner() {
     const qs = token ? `?token=${encodeURIComponent(token)}` : "";
     const { ok, status, body } = await api<{
       messages?: Message[];
-      participants?: { owner: string; counterparty: string };
+      participants?: { owner: string | null; counterparty: string | null };
       viewer?: "owner" | "counterparty" | null;
       error?: string;
     }>(`/api/threads/${encodeURIComponent(contractId)}/messages${qs}`);
@@ -95,7 +106,7 @@ function ThreadInner() {
       return;
     }
     setMessages(body.messages || []);
-    setParticipants(body.participants || { owner: "MSME owner", counterparty: "Counterparty" });
+    setParticipants(body.participants || { owner: null, counterparty: null });
     setRole(body.viewer || null);
     const last = (body.messages || []).filter((m) => m.sender !== "insaf").slice(-1)[0];
     markSeen(contractId, last ? last.sent_at : null);
@@ -199,9 +210,13 @@ function ThreadInner() {
   }
 
   const isParticipant = Boolean(role);
-  const labels: Record<string, string> = participants
-    ? { owner: participants.owner, counterparty: participants.counterparty }
-    : { owner: t("dashboard.msme"), counterparty: t("dashboard.counterparty") };
+  const needsConsent = role === "counterparty" && !consented;
+  // A missing display name falls back to a TRANSLATED label, never to the
+  // server's English default — otherwise a French thread reads "MSME owner".
+  const labels: Record<string, string> = {
+    owner: participants?.owner || t("dashboard.msme"),
+    counterparty: participants?.counterparty || t("dashboard.counterparty")
+  };
 
   return (
     <div className="app">
@@ -233,7 +248,15 @@ function ThreadInner() {
           </div>
         )}
 
-        {!gate && (
+        {!gate && needsConsent && (
+          <ConsentGate
+            contractId={contractId}
+            token={token || undefined}
+            onGranted={() => setConsented(true)}
+          />
+        )}
+
+        {!gate && !needsConsent && (
           <div className="card" style={{ marginTop: 14 }}>
             <p className="muted" style={{ marginTop: 0, fontSize: 13 }}>
               {t("thread.neutral")}
@@ -241,14 +264,33 @@ function ThreadInner() {
 
             {monitoring && monitoring.active && (
               <div className="monitor">
-                <strong style={{ fontSize: 13 }}>{t("thread.monitorTitle")}</strong>
-                <p className="muted" style={{ margin: "4px 0 8px", fontSize: 12.5 }}>
+                <div className="monitor-head">
+                  <h4>{t("ms.title")}</h4>
+                  <span className="monitor-count">
+                    {monitoring.summary && monitoring.summary.performed > 0 && (
+                      <span className="pill pill-ok">{t("ms.done", { n: monitoring.summary.performed })}</span>
+                    )}
+                    {monitoring.summary && monitoring.summary.open > 0 && (
+                      <span className="pill pill-warn">{t("ms.open", { n: monitoring.summary.open })}</span>
+                    )}
+                  </span>
+                </div>
+                <p className="muted" style={{ margin: "4px 0 10px", fontSize: 12.5 }}>
                   {t("thread.monitorBody")}
                 </p>
 
                 {monitoring.phase === "amicable" && (
-                  <div className="banner banner-warn" style={{ marginBottom: 10 }}>
-                    {t("thread.monitorAmicable")}
+                  <div className="banner banner-warn" style={{ marginTop: 0 }}>
+                    <strong>{t("thread.monitorAmicable")}</strong>
+                    {monitoring.phase_note}
+                    <div style={{ marginTop: 8 }}>
+                      <Link
+                        className="btn btn-sm btn-warm"
+                        href={`/dispute?contract_id=${encodeURIComponent(contractId)}${token ? `&token=${encodeURIComponent(token)}` : ""}`}
+                      >
+                        {t("ms.openDispute")} <span className="rtl-flip">→</span>
+                      </Link>
+                    </div>
                   </div>
                 )}
 
@@ -260,19 +302,27 @@ function ThreadInner() {
                         ? t("thread.monitorPayment")
                         : t("thread.monitorGeneric");
                   const estimated = m.date_reference !== "absolute";
-                  const open =
-                    m.alert && !["performed", "breached"].includes(m.state);
                   const overdue = m.alert === "overdue_unconfirmed";
+                  const breached = m.state === "breached";
+                  const done = m.state === "performed";
+                  // Open for confirmation whenever it is not already settled —
+                  // an obligation with no computed alert is still confirmable.
+                  const open = !done && !breached;
+                  const stateClass = done
+                    ? "ms-performed"
+                    : breached
+                      ? "ms-breached"
+                      : overdue
+                        ? "ms-overdue"
+                        : m.alert
+                          ? "ms-due"
+                          : "";
                   return (
-                    <div key={m.obligation_id} className="milestone-row" style={{ marginBottom: 8 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                        <strong style={{ fontSize: 13 }}>{label}</strong>
-                        {m.due_date && (
-                          <span style={{ fontSize: 13 }}>{fmtDate(m.due_date)}</span>
-                        )}
-                        {estimated && (
-                          <span className="pill" style={{ fontSize: 11 }}>{t("thread.monitorEstimated")}</span>
-                        )}
+                    <div key={m.obligation_id} className={"milestone-row " + stateClass}>
+                      <div className="ms-top">
+                        <span className="ms-kind">{label}</span>
+                        {m.due_date && <span className="ms-date">{fmtDate(m.due_date)}</span>}
+                        {estimated && <span className="pill" style={{ fontSize: 11 }}>{t("thread.monitorEstimated")}</span>}
                         {m.alert === "due_soon" && (
                           <span className="pill pill-warn" style={{ fontSize: 11 }}>{t("thread.monitorDueSoon", { days: m.days_until ?? 0 })}</span>
                         )}
@@ -282,23 +332,49 @@ function ThreadInner() {
                         {overdue && (
                           <span className="pill pill-warn" style={{ fontSize: 11 }}>{t("thread.monitorOverdue", { date: fmtDate(m.due_date) })}</span>
                         )}
-                        {!m.alert && m.state === "performed" && (
-                          <span className="pill pill-ok" style={{ fontSize: 11 }}>{t("thread.monitorComplete")}</span>
+                        {breached && <span className="pill pill-danger" style={{ fontSize: 11 }}>{t("state.breached")}</span>}
+                        {done && <span className="pill pill-ok" style={{ fontSize: 11 }}>{t("thread.monitorComplete")}</span>}
+                        {m.anchored && <span className="pill" style={{ fontSize: 11 }}>{t("ms.anchoredTag")}</span>}
+                      </div>
+
+                      <div className="ms-flow">{m.action}</div>
+
+                      <div className="ms-top">
+                        {m.quantity && (
+                          <>
+                            <span className="ms-metric">
+                              {t("ms.expected")} {m.quantity.expected} {m.quantity.unit}
+                            </span>
+                            <span className={"ms-metric " + (m.quantity.actual < m.quantity.expected ? "short" : "")}>
+                              {t("ms.received")} {m.quantity.actual} {m.quantity.unit}
+                            </span>
+                            {m.quantity.actual < m.quantity.expected && (
+                              <span className="ms-metric short">
+                                {t("ms.short", { n: m.quantity.expected - m.quantity.actual })}
+                              </span>
+                            )}
+                          </>
+                        )}
+                        {m.amount && (
+                          <span className="ms-metric">{m.amount.value} {m.amount.currency}</span>
                         )}
                       </div>
-                      <p className="muted" style={{ margin: "2px 0 0", fontSize: 12 }}>
-                        {m.obligor_label} → {m.obligee_label} · {m.trigger_text}
-                      </p>
+
+                      <div className="ms-flow">
+                        {m.obligor_label} <span className="rtl-flip">→</span> {m.obligee_label} · {m.trigger_text}
+                        {m.evidence_required ? ` · ${t("ms.evidence", { what: m.evidence_required })}` : ""}
+                      </div>
+
                       {isParticipant && open && (
-                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 6 }}>
-                          <button className="btn btn-primary" onClick={() => confirmMilestone(m.obligation_id, "performed")} disabled={busy}>
+                        <div className="ms-actions">
+                          <button className="btn btn-primary btn-sm" onClick={() => confirmMilestone(m.obligation_id, "performed")} disabled={busy}>
                             {t("thread.monitorConfirmPerformed")}
                           </button>
-                          <button className="btn" onClick={() => confirmMilestone(m.obligation_id, "not_yet")} disabled={busy}>
+                          <button className="btn btn-sm" onClick={() => confirmMilestone(m.obligation_id, "not_yet")} disabled={busy}>
                             {t("thread.monitorConfirmNotYet")}
                           </button>
                           {overdue && (
-                            <button className="btn btn-warn" onClick={() => confirmMilestone(m.obligation_id, "breached")} disabled={busy}>
+                            <button className="btn btn-warn btn-sm" onClick={() => confirmMilestone(m.obligation_id, "breached")} disabled={busy}>
                               {t("thread.monitorBreach")}
                             </button>
                           )}
@@ -308,18 +384,20 @@ function ThreadInner() {
                   );
                 })}
 
-                {isParticipant && (monitoring.milestones || []).some((m) => m.alert === "overdue_unconfirmed") && (
-                  <button className="btn btn-warm" onClick={escalateMilestone} disabled={busy} style={{ marginTop: 4 }}>
-                    {t("thread.monitorEscalate")}
-                  </button>
-                )}
-
-                {role === "owner" && monitoring.phase !== "amicable" && (
-                  <button className="btn" onClick={advanceDemo} disabled={busy} style={{ marginTop: 4, float: "right" }}>
-                    {t("thread.monitorAdvance")}
-                  </button>
-                )}
-                <div style={{ clear: "both" }} />
+                <div className="ms-actions" style={{ marginTop: 12 }}>
+                  {isParticipant && monitoring.phase !== "amicable" &&
+                    (monitoring.milestones || []).some((m) => m.alert === "overdue_unconfirmed") && (
+                      <button className="btn btn-warm btn-sm" onClick={escalateMilestone} disabled={busy}>
+                        {t("thread.monitorEscalate")}
+                      </button>
+                    )}
+                  <span className="top-spacer" />
+                  {role === "owner" && monitoring.phase !== "amicable" && (
+                    <button className="btn btn-sm" onClick={advanceDemo} disabled={busy}>
+                      {t("thread.monitorAdvance")}
+                    </button>
+                  )}
+                </div>
               </div>
             )}
 

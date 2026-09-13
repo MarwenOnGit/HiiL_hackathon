@@ -188,3 +188,214 @@ h1, h2, h3 { line-height: 1.25; }
 [dir="rtl"] .msg-mine { align-self: flex-start; }
 [dir="rtl"] .msg-body, [dir="rtl"] .msg-mine .msg-body { border-radius: 4px 12px 12px 12px; }
 [dir="rtl"] .rtl-flip { display: inline-block; transform: scaleX(-1); }
+/* ---------- monitoring panel ----------
+   Was previously unstyled: .monitor / .milestone-row / .btn-warn were used in
+   the thread page and defined nowhere, so dispute prevention — the feature the
+   product is built around — rendered as loose body text. */
+.monitor {
+  border: 1px solid var(--border);
+  border-inline-start: 3px solid var(--accent-warm);
+  border-radius: var(--radius-sm);
+  background: var(--surface-alt);
+  padding: 14px 16px;
+  margin: 12px 0 16px;
+}
+.monitor-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.monitor-head h4 { margin: 0; font-size: 13.5px; }
+.monitor-count { margin-inline-start: auto; display: flex; gap: 6px; flex-wrap: wrap; }
+
+.milestone-row {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-inline-start: 3px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 11px 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.milestone-row + .milestone-row { margin-top: 8px; }
+.ms-performed { border-inline-start-color: var(--success); }
+.ms-breached  { border-inline-start-color: var(--danger); }
+.ms-overdue   { border-inline-start-color: var(--warn); }
+.ms-due       { border-inline-start-color: var(--accent-warm); }
+.ms-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ms-kind { font-weight: 600; font-size: 13.5px; }
+.ms-date { font-size: 13px; color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+.ms-flow { font-size: 12.5px; color: var(--ink-muted); }
+.ms-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 3px; }
+.ms-metric {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  background: var(--surface-alt);
+  border-radius: 6px;
+  padding: 2px 7px;
+}
+.ms-metric.short { background: var(--danger-soft); color: var(--danger); }
+
+.btn-warn { background: var(--warn); border-color: var(--warn); color: #fff; }
+.btn-warn:hover { filter: brightness(1.08); }
+.btn-danger { background: var(--danger); border-color: var(--danger); color: #fff; }
+
+/* ---------- fact ledger ---------- */
+.ledger { display: flex; flex-direction: column; gap: 8px; }
+.fact {
+  display: grid;
+  grid-template-columns: 104px minmax(0, 1fr);
+  gap: 4px 14px;
+  padding: 11px 0;
+  border-top: 1px solid var(--border);
+  align-items: start;
+}
+.fact:first-child { border-top: 0; }
+.fact-text { font-size: 13.5px; }
+.fact-src { font-size: 12px; color: var(--ink-muted); margin-top: 3px; }
+.fact-src .chip-src {
+  display: inline-block;
+  background: var(--surface-alt);
+  border-radius: 5px;
+  padding: 1px 6px;
+  margin-inline-end: 5px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+}
+@media (max-width: 620px) { .fact { grid-template-columns: 1fr; } }
+
+/* ---------- BATNA ---------- */
+.batna { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+.batna-cell { background: var(--surface-alt); border-radius: var(--radius-sm); padding: 14px 16px; }
+.batna-val {
+  font-size: 21px; font-weight: 700; font-variant-numeric: tabular-nums;
+  font-family: "IBM Plex Mono", monospace; line-height: 1.2;
+}
+.batna-label { font-size: 12px; color: var(--ink-muted); margin-top: 3px; }
+.batna-source {
+  font-size: 12px; color: var(--ink-muted); margin-top: 10px;
+  padding-top: 10px; border-top: 1px dashed var(--border);
+}
+
+/* ---------- settlement options ---------- */
+.option {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  background: var(--surface);
+}
+.option + .option { margin-top: 12px; }
+.option-accepted { border-color: var(--success); background: var(--success-soft); }
+.option-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.option-head h4 { margin: 0; font-size: 15px; }
+.option-terms { margin: 10px 0 0; padding-inline-start: 18px; font-size: 13.5px; }
+.option-terms li { margin: 3px 0; }
+.option-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; align-items: center; }
+
+/* ---------- agent suggestions ---------- */
+.suggestion {
+  border: 1px dashed var(--accent);
+  border-radius: var(--radius-sm);
+  padding: 13px 15px;
+  background: var(--accent-soft);
+}
+.suggestion + .suggestion { margin-top: 10px; }
+.suggestion h4 { margin: 0 0 5px; font-size: 13.5px; color: var(--accent); }
+.suggestion p { margin: 0; font-size: 13px; }
+
+/* ---------- analysis findings ---------- */
+.finding-card {
+  border: 1px solid var(--border);
+  border-inline-start: 3px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 13px 15px;
+  background: var(--surface);
+}
+.finding-card + .finding-card { margin-top: 10px; }
+.rk-unenforceable { border-inline-start-color: var(--danger); }
+.rk-ambiguous     { border-inline-start-color: var(--warn); }
+.rk-asymmetric    { border-inline-start-color: var(--accent-warm); }
+.finding-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 7px; }
+.clause-text {
+  font-size: 13px; padding: 9px 11px; border-radius: 6px;
+  background: var(--surface-alt); margin-top: 7px; white-space: pre-wrap;
+}
+.clause-text.was { text-decoration: line-through; text-decoration-color: var(--danger); color: var(--ink-muted); }
+.clause-text.now { background: var(--success-soft); }
+.legal-ref {
+  margin-top: 9px; padding: 10px 12px; border-radius: 6px;
+  background: var(--accent-soft); font-size: 12.5px;
+}
+.legal-ref .art { font-weight: 600; color: var(--accent); }
+.legal-ref blockquote {
+  margin: 6px 0 0; padding-inline-start: 10px;
+  border-inline-start: 2px solid var(--accent);
+  font-style: italic; color: var(--ink);
+}
+
+/* ---------- demo ribbon ---------- */
+.demo-bar {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  background: var(--accent-warm-soft); border: 1px solid var(--accent-warm);
+  border-radius: var(--radius-sm); padding: 10px 14px; margin-bottom: 14px;
+  font-size: 13px;
+}
+.demo-bar strong { color: var(--accent-warm); }
+.demo-bar .top-spacer { margin-inline-start: auto; }
+
+/* ---------- party grid (was an inline 1fr 1fr the breakpoint couldn't reach) ---------- */
+.party-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin-top: 12px; }
+
+/* ---------- brand mark ---------- */
+.brand-mark {
+  border-radius: 8px;
+  overflow: hidden;
+  flex: 0 0 auto;
+  display: block;
+  background: var(--surface-alt);
+}
+.brand-mark img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* ---------- consent gate ----------
+   Deliberately NOT a dismissible banner: the party is asked once, explicitly,
+   with each purpose on its own line. Optional purposes stay separately
+   declinable — bundling them into the required tick is the pattern this
+   screen exists to avoid. */
+.consent-wrap { display: flex; align-items: center; justify-content: center; padding: 32px 16px 60px; }
+.consent-card {
+  width: 100%; max-width: 560px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  padding: 26px;
+}
+.consent-head { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.consent-head h1 { font-size: 21px; margin: 8px 0 0; }
+.consent-head p { margin: 0; font-size: 13.5px; max-width: 42ch; }
+
+.consent-list { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+.consent-item {
+  display: flex; gap: 12px; align-items: flex-start;
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 13px 14px; cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.consent-item:hover { border-color: var(--accent); }
+.consent-item.on { border-color: var(--accent); background: var(--accent-soft); }
+.consent-item input { margin: 2px 0 0; width: 17px; height: 17px; accent-color: var(--accent); flex: 0 0 auto; cursor: pointer; }
+.consent-copy { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.consent-copy strong { font-size: 13.5px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.consent-copy .muted { font-size: 12.5px; line-height: 1.5; }
+.consent-req, .consent-opt {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+  padding: 2px 7px; border-radius: 999px;
+}
+.consent-req { background: var(--danger-soft); color: var(--danger); }
+.consent-opt { background: var(--surface-alt); color: var(--ink-muted); }
+
+.consent-note {
+  margin-top: 16px; padding: 12px 14px; border-radius: var(--radius-sm);
+  background: var(--surface-alt); font-size: 12px; color: var(--ink-muted); line-height: 1.55;
+}
+.consent-actions { display: flex; gap: 10px; margin-top: 18px; }
+.consent-actions .btn { flex: 1; }
+.consent-hint { font-size: 12px; color: var(--ink-muted); text-align: center; margin: 10px 0 0; }

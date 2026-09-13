@@ -10,6 +10,11 @@
 // to tolerate the agent being down.
 
 const db = require("../db");
+// Lazy require: demo/index.js requires db.js too, and a static cycle here would
+// leave one of them half-initialised.
+function demo() {
+  return require("../demo");
+}
 
 const AGENT_URL = process.env.AGENT_SERVICE_URL || "http://127.0.0.1:5001";
 const AGENT_LIST_TTL_MS = 10 * 1000;
@@ -101,6 +106,8 @@ async function agentStored(contractId) {
 }
 
 async function contractExecuted(contractId) {
+  // The staged demo contract is signed and anchored by construction.
+  if (demo().isDemoContract(contractId)) return true;
   if (db.getContract(contractId)) {
     const record = db.getOnchainRecord(contractId);
     return Boolean(record && record.executed);
@@ -124,6 +131,10 @@ async function listMine(userId) {
   const rows = [];
   for (const record of owned) {
     const contractId = record.contract_id;
+    if (record.source === "demo") {
+      rows.push(demo().dashboardRow());
+      continue;
+    }
     const wizard = db.getContract(contractId);
     const relationship = wizard ? db.getRelationship(wizard.relationship_id) : null;
     const onchain = db.getOnchainRecord(contractId);

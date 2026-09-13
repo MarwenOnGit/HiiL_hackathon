@@ -11,11 +11,7 @@ import LangToggle from "./LangToggle";
 export function InsafMark({ size = 30 }: { size?: number }) {
   return (
     <span className="brand-mark" style={{ width: size, height: size }}>
-      <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
-        <rect x="2" y="2" width="28" height="28" rx="8" fill="#4148A0" />
-        <path d="M8 16c3 3 6-3 8 0s6-3 8 0" stroke="#FFF" strokeWidth="2.4" strokeLinecap="round" />
-        <circle cx="16" cy="22.5" r="1.6" fill="#E0954A" />
-      </svg>
+      <img src="/logo.png" alt="Insaf" width={size} height={size} />
     </span>
   );
 }

@@ -3,6 +3,7 @@ import db from "@/lib/server/db";
 import passwords from "@/lib/server/services/passwords";
 import { createSession } from "@/lib/server/services/sessionAuth";
 import { setSessionCookie } from "@/lib/server/session";
+import demo from "@/lib/server/demo";
 
 function sanitize(user: any) {
   return {
@@ -17,6 +18,8 @@ function sanitize(user: any) {
 export async function POST(req: NextRequest) {
   let body: any = {};
   try { body = await req.json(); } catch { /* empty body -> {} */ }
+  // Idempotent: makes the staged demo account loginable on a fresh checkout.
+  demo.ensureSeeded();
   const { email, password } = body;
   const normalized = String(email || "").trim().toLowerCase();
   const user = db.getUserByEmail(normalized);

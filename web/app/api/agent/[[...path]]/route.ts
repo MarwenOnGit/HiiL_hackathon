@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 import db from "@/lib/server/db";
 import registry from "@/lib/server/services/contractsRegistry";
 import { authFromRequest } from "@/lib/server/session";
+import demo from "@/lib/server/demo";
 
 const AGENT_URL = process.env.AGENT_SERVICE_URL || "http://127.0.0.1:5001";
 const TIMEOUTS = { harden: 30000, default: 10000, health: 3000 };
@@ -67,6 +68,7 @@ function forwardTarget(method: string, path: string[]): string | null {
   }
   if (m === "contracts" && rest[1] === "history") return `/contracts/${rest[0]}/history`;
   if (m === "contracts" && rest[1] === "verify") return `/contracts/${rest[0]}/verify`;
+  if (m === "contracts" && rest[1] === "monitor") return `/contracts/${rest[0]}/monitor`;
   if (m === "contracts" && rest[1] === "sign" && method === "POST") return `/contracts/${rest[0]}/sign`;
   if (m === "contracts" && rest[1] === "accept" && method === "POST") return `/contracts/${rest[0]}/accept`;
   return null;
@@ -87,6 +89,24 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ path
         detail: err.message
       });
     }
+  }
+
+  // Staged demo contract: served from the fixture, never proxied. This is what
+  // lets the whole scenario be shown with the agent service stopped.
+  if (path[0] === "contracts" && path[1] && demo.isDemoContract(path[1])) {
+    if (path[2] === "history") return NextResponse.json({ entries: demo.history() });
+    if (path[2] === "analysis") return NextResponse.json(demo.analysis());
+    if (path[2] === "verify") {
+      const v = demo.scenario.versions()[0];
+      return NextResponse.json({
+        verified: true,
+        version_id: v.version_id,
+        text_hash: v.text_hash,
+        anchor_doc_id: "doc_001",
+        checked_at: new Date().toISOString()
+      });
+    }
+    if (!path[2]) return NextResponse.json(demo.contractDetail());
   }
 
   const target = forwardTarget("GET", path);
