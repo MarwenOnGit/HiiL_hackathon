@@ -122,6 +122,39 @@ class Obligation:
     evidence_required: str | None = None
     state: ObligationState = ObligationState.PENDING
     state_changed_at: datetime | None = None
+    # Monitoring facts (Phase "dispute-prevention"): what kind of duty this is,
+    # where the due date comes from, and the numeric delay parsed from the
+    # trigger. `date_reference` is honest about provenance — an absolute date
+    # written in the clause versus a derived estimate must never be shown as
+    # the same thing.
+    kind: str = "obligation"        # "delivery" | "payment" | ...
+    date_reference: str = "unknown" # "absolute" | "estimated" | "event_linked" | "unknown"
+    delay_days: int | None = None   # "30 jours" -> 30; None when not quantified
+
+
+@dataclass
+class Milestone:
+    """One dated duty on the monitoring plan — a derived view over an
+    obligation, never a stored copy (obligations have one home: their clause).
+
+    Rebuilt at read time by the monitor, so it can never drift out of step
+    with the ledger it summarises.
+    """
+
+    milestone_id: str              # == obligation_id
+    obligation_id: str
+    clause_id: str
+    kind: str
+    action: str
+    obligor_label: str
+    obligee_label: str
+    trigger_text: str
+    due_date: datetime | None
+    date_reference: str            # as on Obligation
+    evidence_required: str | None
+    state: ObligationState
+    days_until: int | None = None  # computed against the monitoring date
+    alert: str | None = None       # "due_soon" | "due" | "overdue_unconfirmed" | None
 
 
 @dataclass
@@ -299,6 +332,9 @@ def _clause_from_dict(raw: dict[str, Any]) -> Clause:
                 evidence_required=o.get("evidence_required"),
                 state=ObligationState(o.get("state", "pending")),
                 state_changed_at=parse_iso(o.get("state_changed_at")),
+                kind=o.get("kind", "obligation"),
+                date_reference=o.get("date_reference", "unknown"),
+                delay_days=o.get("delay_days"),
             )
             for o in raw.get("obligations", [])
         ],

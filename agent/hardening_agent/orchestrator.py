@@ -83,11 +83,23 @@ class HardeningReport:
                     "obligee": o.obligee,
                     "action": o.action,
                     "trigger": o.trigger,
+                    "due_date": o.due_date.isoformat() if o.due_date else None,
+                    "date_reference": o.date_reference,
                     "evidence_required": o.evidence_required,
                     "state": str(o.state),
                 }
                 for o in self.obligations
             ],
+            "monitoring_plan": {
+                "milestones": len(self.obligations),
+                "dated": sum(1 for o in self.obligations if o.due_date is not None),
+                "note": (
+                    "Les échéances « estimées » sont dérivées de l'entrée en "
+                    "vigueur; les dates écrites dans le contrat sont « absolues »; "
+                    "une échéance liée à un événement (ex. paiement après "
+                    "livraison) se résout quand l'événement est confirmé."
+                ),
+            },
             "grounding": {
                 "corpus_size": self.corpus_size,
                 "grounded_recommendations": self.grounded_recommendations,
@@ -161,7 +173,9 @@ def harden(
         clause.risk_flags.extend(extra)
         recommendations.extend(clause_recs)
 
-    obligations = extract_obligations(original.clauses, profile, supplier, buyer)
+    obligations = extract_obligations(
+        original.clauses, profile, supplier, buyer, effective=original.effective_from
+    )
     by_clause = {c.clause_id: c for c in original.clauses}
     for obligation in obligations:
         clause = by_clause.get(obligation.clause_id)

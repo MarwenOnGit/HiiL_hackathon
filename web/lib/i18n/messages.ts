@@ -133,6 +133,44 @@ export const messages = {
   "thread.analysed": { fr: "analyse", ar: "تحليل" },
   "thread.grounded": { fr: "fondé", ar: "مستند" },
   "thread.noBasis": { fr: "aucune base légale", ar: "لا أساس قانوني" },
+  // Dispute-prevention monitoring: the chat is the check-in surface.
+  "thread.monitorTitle": { fr: "Suivi préventif", ar: "المتابعة الوقائية" },
+  "thread.monitorBody": {
+    fr: "Les échéances du contrat sont suivies : une confirmation est horodatée, puis ancrée sur la chaîne. Les deux parties voient exactement les mêmes faits.",
+    ar: "تُتتبَّع آجال العقد: يُسجَّل التأكيد بوقته ثم يُثبَّت على السلسلة. يرى الطرفان نفس الوقائع تمامًا."
+  },
+  "thread.monitorDelivery": { fr: "Livraison attendue", ar: "التسليم المتوقَّع" },
+  "thread.monitorPayment": { fr: "Paiement attendu", ar: "الدفع المتوقَّع" },
+  "thread.monitorGeneric": { fr: "Échéance", ar: "أجل" },
+  "thread.monitorDueSoon": { fr: "dans {days} jour(s)", ar: "خلال {days} يومًا" },
+  "thread.monitorDueToday": { fr: "aujourd'hui", ar: "اليوم" },
+  "thread.monitorOverdue": {
+    fr: "due le {date}, aucune confirmation enregistrée",
+    ar: "مستحق في {date}، لا تأكيد مسجَّل"
+  },
+  "thread.monitorEstimated": { fr: "estimée", ar: "تقديرية" },
+  "thread.monitorAtRisk": { fr: "à confirmer", ar: "بانتظار التأكيد" },
+  "thread.monitorComplete": { fr: "terminée", ar: "مكتملة" },
+  "thread.monitorConfirmPerformed": {
+    fr: "Confirmer la réalisation",
+    ar: "تأكيد الإنجاز"
+  },
+  "thread.monitorConfirmNotYet": { fr: "Pas encore", ar: "ليس بعد" },
+  "thread.monitorBreach": {
+    fr: "Signaler comme non réalisée",
+    ar: "الإبلاغ عن عدم الإنجاز"
+  },
+  "thread.monitorEscalate": {
+    fr: "Entamer une résolution amiable",
+    ar: "الشروع في حلٍّ ودي"
+  },
+  "thread.monitorAdvance": { fr: "Simuler +4 jours", ar: "محاكاة +4 أيام" },
+  "thread.monitorAmicable": {
+    fr: "Phase amiable ouverte — une résolution est tentée entre les parties.",
+    ar: "مفتوحة — يُحاول التوصل إلى حلٍّ ودي بين الطرفين."
+  },
+  "thread.monitorStatus": { fr: "Statut", ar: "الحالة" },
+  "thread.monitorAnchored": { fr: "ancrée", ar: "مثبَّتة" },
 
   // ------------------------------------------------------------------ invite
   "invite.openTitle": { fr: "Ouvrir votre invitation", ar: "افتح دعوتك" },
@@ -253,7 +291,6 @@ export const messages = {
   "harden.stepContract": { fr: "Contrat", ar: "العقد" },
   "harden.stepAnalyse": { fr: "Analyse", ar: "التحليل" },
   "harden.stepAncrage": { fr: "Ancrage", ar: "التثبيت" },
-  "harden.stepLitige": { fr: "Différend", ar: "النزاع" },
   "harden.title": { fr: "Nouveau contrat", ar: "عقد جديد" },
   "harden.intro": {
     fr: "Composez votre contrat ou déposez un contrat existant pour le faire auditer : les parties, les éléments essentiels, puis l'analyse de lacunes. Insaf détecte les anomalies et ne modifie jamais votre texte.",
@@ -419,7 +456,6 @@ export const messages = {
   "findings.noneRecommendations": { fr: "Aucune anomalie détectée.", ar: "لا ملاحظات مكتشفة." },
   "findings.obligations": { fr: "Obligations extraites", ar: "الالتزامات المستخرجة" },
   "findings.acknowledge": { fr: "J'ai pris connaissance", ar: "اطّلعت" },
-  "findings.toDispute": { fr: "Passer au différend (simulation)", ar: "الانتقال إلى النزاع (محاكاة)" },
   "accept.versions": { fr: "Versions du contrat", ar: "إصدارات العقد" },
   "accept.storedOnChain": {
     fr: "Contrat stocké automatiquement sur la chaîne après l'analyse",
@@ -434,44 +470,6 @@ export const messages = {
   "accept.notAnchored": { fr: "non ancrée", ar: "غير مثبَّتة" },
   "accept.nothingAnchored": { fr: "Rien d'ancré pour l'instant.", ar: "لا شيء مثبَّت بعد." },
   "accept.toDashboard": { fr: "Voir dans le tableau de bord →", ar: "عرض في لوحة التحكم ←" },
-  "dispute.intro": {
-    fr: "Insaf est un terrain neutre : les deux parties voient le même bilan et les mêmes chiffres. Estimez l'issue judiciaire avant de décider d'une transaction.",
-    ar: "إنصاف فضاء محايد: يرى الطرفان الحصيلة والأرقام نفسها. قدّر نتيجة التقاضي قبل البت في الصلح."
-  },
-  "dispute.versionBuyer": { fr: "Version de l'acheteur", ar: "رواية المشتري" },
-  "dispute.versionSupplier": { fr: "Version du fournisseur", ar: "رواية المورد" },
-  "dispute.statementBuyerDefault": {
-    fr: "Les marchandises livrées ne sont pas conformes : livraison partielle et spécifications non respectées malgré mise en demeure.",
-    ar: "البضائع المسلّمة غير مطابقة: تسليم جزئي وعدم احترام للمواصفات رغم الإنذار."
-  },
-  "dispute.statementSupplierDefault": {
-    fr: "Toutes les commandes ont été livrées et le prix reste impayé malgré plusieurs relances.",
-    ar: "تمّ تسليم جميع الطلبات ويبقى الثمن غير مُخلص رغم عدة تذكيرات."
-  },
-  "dispute.amount": { fr: "Montant en cause (TND)", ar: "المبلغ المتنازع فيه (دينار)" },
-  "dispute.contested": { fr: "La dette est-elle contestée ?", ar: "هل الدَين متنازع فيه؟" },
-  "dispute.yes": { fr: "Oui", ar: "نعم" },
-  "dispute.no": { fr: "Non", ar: "لا" },
-  "dispute.analyse": { fr: "Analyser le différend", ar: "تحليل النزاع" },
-  "dispute.analysing": { fr: "Analyser…", ar: "جارٍ التحليل…" },
-  "dispute.applicableVersion": { fr: "Version applicable", ar: "النسخة السارية" },
-  "dispute.facts": { fr: "Tableau des faits", ar: "جدول الوقائع" },
-  "dispute.agreed": { fr: "convenu", ar: "متّفق عليه" },
-  "dispute.disputed": { fr: "contesté", ar: "متنازع فيه" },
-  "dispute.unsupported": { fr: "non étayé", ar: "غير مدعَّم" },
-  "dispute.noClause": { fr: "aucune clause rattachée", ar: "لا شرط مرتبط" },
-  "dispute.courtOutlook": {
-    fr: "Si vous allez au tribunal (données Doing Business 2020, Tunisie)",
-    ar: "إذا لجأت إلى المحكمة (بيانات Doing Business 2020، تونس)"
-  },
-  "dispute.duration": { fr: "Durée :", ar: "المدة:" },
-  "dispute.days": { fr: "jours", ar: "يومًا" },
-  "dispute.cost": { fr: "Frais :", ar: "التكاليف:" },
-  "dispute.source": { fr: "Source :", ar: "المصدر:" },
-  "dispute.settlement": { fr: "Options de règlement", ar: "خيارات التسوية" },
-  "dispute.monetary": { fr: "monétaire", ar: "مادي" },
-  "dispute.nonMonetary": { fr: "non-monétaire", ar: "غير مادي" },
-  "dispute.lawyerReview": { fr: "Revue par un avocat requise avant signature.", ar: "مراجعة محامٍ مطلوبة قبل التوقيع." },
   "err.network": { fr: "erreur réseau", ar: "خطأ في الشبكة" },
   "err.couldNotPost": { fr: "impossible d'envoyer", ar: "تعذّر الإرسال" },
   "err.assistantUnreachable": { fr: "l'assistant est injoignable", ar: "المساعد غير متاح" },

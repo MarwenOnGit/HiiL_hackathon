@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+from fastapi import FastAPI, HTTPException, Request, UploadFile, File, Form
 from pydantic import BaseModel, Field
 
 from blockchain_client.client import ChainError
@@ -26,6 +26,13 @@ from core.version_manager import add_version
 from hardening_agent import harden
 from hardening_agent.builder import BuildError, build_contract_text, buyer_and_supplier, essentials_meta
 from hardening_agent.ingest import get_engine
+from monitor import (
+    build_schedule,
+    check_in_text,
+    confirm_obligation,
+    escalate_to_amicable,
+    monitor_as_of,
+)
 from resolution_agent import resolve
 from resolution_agent.dispute_intake import NoGoverningVersion
 from resolution_agent.fact_reconciler import Statement
@@ -333,7 +340,7 @@ def sign(contract_id: str, body: SignBody) -> dict[str, Any]:
 
 
 @app.get("/contracts/{contract_id}")
-def get_contract(contract_id: str) -> dict[str, Any]:
+def get_contract(contract_id: str, request: Request) -> dict[str, Any]:
     if not RUNTIME.store.exists(contract_id):
         raise HTTPException(status_code=404, detail="unknown contract")
     contract = RUNTIME.store.get(contract_id)
@@ -349,9 +356,17 @@ def get_contract(contract_id: str) -> dict[str, Any]:
             "due_date": o.due_date.isoformat() if o.due_date else None,
             "evidence_required": o.evidence_required,
             "state": str(o.state),
+            "kind": o.kind,
+            "date_reference": o.date_reference,
+            "delay_days": o.delay_days,
         }
         for o in contract.obligations()
     ]
+    monitoring = monitoring_for(contract, request=request) if contract.metadata.get("analysis_fingerprint") else {
+        "active": False,
+        "reason": "no agent analysis yet",
+        "milestones": [],
+    }
     return {
         "contract_id": contract.contract_id,
         "parties": [
@@ -377,7 +392,137 @@ def get_contract(contract_id: str) -> dict[str, Any]:
         ],
         "obligations": obligations,
         "obligation_count": len(obligations),
+        "monitoring": monitoring,
     }
+
+
+def monitoring_for(contract, request: Request | None = None) -> dict[str, Any]:
+    """The dispute-prevention view of a contract: what the chat banner should
+    show. Wizard contracts that never ran the agent pipeline say so instead of
+    pretending to have a plan (invariant 6 — absence is a fact)."""
+    if not contract.metadata.get("analysis_fingerprint"):
+        return {"active": False, "reason": "no agent analysis yet"}
+    lang = (request.headers.get("x-insaf-lang") or "fr").lower()
+    if lang not in ("fr", "ar"):
+        lang = "fr"
+    now = monitor_as_of(contract)
+    milestones = build_schedule(contract, now)
+    return {
+        "active": True,
+        "as_of": now.isoformat(),
+        "phase": contract.metadata.get("phase", "monitoring"),
+        "phase_reference": contract.metadata.get("amicable_opened_at"),
+        "milestones": [
+            {
+                "milestone_id": m.milestone_id,
+                "obligation_id": m.obligation_id,
+                "clause_id": m.clause_id,
+                "kind": m.kind,
+                "action": m.action,
+                "obligor_label": m.obligor_label,
+                "obligee_label": m.obligee_label,
+                "trigger_text": m.trigger_text,
+                "due_date": m.due_date.isoformat() if m.due_date else None,
+                "date_reference": m.date_reference,
+                "evidence_required": m.evidence_required,
+                "state": str(m.state),
+                "days_until": m.days_until if m.days_until is not None else None,
+                "alert": m.alert if m.alert is not None else None,
+                # The check-in question itself, ready to post into the thread —
+                # single source of copy lives in config/monitor.py (invariant 8).
+                "check_in": check_in_text(m, lang) if m.alert and m.due_date else "",
+            }
+            for m in milestones
+        ],
+    }
+
+
+@app.get("/contracts/{contract_id}/monitor")
+def monitor(contract_id: str, request: Request) -> dict[str, Any]:
+    if not RUNTIME.store.exists(contract_id):
+        raise HTTPException(status_code=404, detail="unknown contract")
+    return monitoring_for(RUNTIME.store.get(contract_id), request)
+
+
+class ConfirmBody(BaseModel):
+    outcome: str              # "performed" | "not_yet" | "breached"
+    party_id: str | None = None
+    note: str = ""
+
+
+class EscalateBody(BaseModel):
+    obligation_ids: list[str] = []
+    note: str = ""
+
+
+class AdvanceBody(BaseModel):
+    contract_id: str
+    days: int
+
+
+@app.post("/contracts/{contract_id}/obligations/{obligation_id}/confirm")
+def confirm(contract_id: str, obligation_id: str, body: ConfirmBody, request: Request) -> dict[str, Any]:
+    """A party confirms a milestone inside the chat. The confirmation is a
+    recorded, anchored fact (performed / breached) or a timestamped
+    observation (not_yet) — precisely the discipline of the obligation state
+    machine: silence, too, is a fact, never missed."""
+    lang = (request.headers.get("x-insaf-lang") or "fr").lower()
+    if lang not in ("fr", "ar"):
+        lang = "fr"
+    if not RUNTIME.store.exists(contract_id):
+        raise HTTPException(status_code=404, detail="unknown contract")
+    contract = RUNTIME.store.get(contract_id)
+    try:
+        return confirm_obligation(
+            contract,
+            obligation_id,
+            body.outcome,
+            chain=RUNTIME.chain,
+            store=RUNTIME.store,
+            party_id=body.party_id,
+            lang=lang,
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except ChainError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
+@app.post("/contracts/{contract_id}/escalate")
+def escalate(contract_id: str, body: EscalateBody, request: Request) -> dict[str, Any]:
+    """A missed milestone escalates into the amicable phase — attempted
+    resolution, anchored as DISPUTE_OPENED before anything further."""
+    lang = (request.headers.get("x-insaf-lang") or "fr").lower()
+    if lang not in ("fr", "ar"):
+        lang = "fr"
+    if not RUNTIME.store.exists(contract_id):
+        raise HTTPException(status_code=404, detail="unknown contract")
+    contract = RUNTIME.store.get(contract_id)
+    return escalate_to_amicable(
+        contract,
+        obligation_ids=body.obligation_ids,
+        chain=RUNTIME.chain,
+        store=RUNTIME.store,
+        lang=lang,
+    )
+
+
+@app.post("/admin/advance")
+def admin_advance(body: AdvanceBody) -> dict[str, Any]:
+    """Demo-only time machine: shifts the monitoring *view* N days forward so
+    the check-in flow can be demonstrated. It never writes to version history
+    or the chain — an offset is not an event (invariant 1)."""
+    if not RUNTIME.store.exists(body.contract_id):
+        raise HTTPException(status_code=404, detail="unknown contract")
+    contract = RUNTIME.store.get(body.contract_id)
+    if body.days == 0:
+        contract.metadata.pop("monitor_offset_days", None)
+    else:
+        contract.metadata["monitor_offset_days"] = int(body.days)
+    RUNTIME.store.save(contract)
+    return monitoring_for(contract)
 
 
 @app.get("/contracts/{contract_id}/history")

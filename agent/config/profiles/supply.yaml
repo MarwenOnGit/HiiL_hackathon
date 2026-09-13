@@ -181,10 +181,12 @@ asymmetric_patterns:
     label_fr: "faculte reservee a une seule partie"
 
 # Obligation extraction cues: who owes what, and when it falls due.
+# Verb forms are listed explicitly — the extractor is deterministic pattern
+# matching, not a stemmer, so "livre" and "livrer" both need to be here.
 obligation_cues:
   fr:
-    deliver: ["livrer", "livraison", "fournir", "expedier"]
-    pay: ["payer", "paiement", "regler", "reglement"]
+    deliver: ["livrer", "livraison", "fournir", "expedier", "livre", "expedition"]
+    pay: ["payer", "paiement", "regler", "reglement", "regle", "virement", "net"]
   ar:
-    deliver: ["تسليم", "توريد"]
-    pay: ["دفع", "خلاص"]
+    deliver: ["تسليم", "توريد", "يسلم", "تسلم"]
+    pay: ["دفع", "خلاص", "يخلص", "التحويل"]

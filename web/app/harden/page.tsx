@@ -43,16 +43,8 @@ interface Findings {
   };
 }
 
-interface DisputeReport {
-  governing_version: { explanation: string };
-  fact_ledger: { summary: { agreed: number; disputed: number; unsupported: number }; facts: { fact: string; status: string; clause_ids: string[] }[]; note: string };
-  batna: { path_label: string; duration_days: { low: number; high: number } | null; cost_amount: { low: number; high: number } | null; source: string; scope: string; note: string; caveats: string[] };
-  settlement_options: { label: string; detail: string; monetary?: boolean }[];
-  negotiation: { human_gate_note: string; lawyer_review_required: boolean };
-}
-
-type Step = "builder" | "findings" | "accept" | "dispute";
-const ORDER: Step[] = ["builder", "findings", "accept", "dispute"];
+type Step = "builder" | "findings" | "accept";
+const ORDER: Step[] = ["builder", "findings", "accept"];
 
 interface PartyState {
   type: "physique" | "morale";
@@ -145,11 +137,6 @@ export default function HardenPage() {
     { id: 1, title: "", text: "" },
     { id: 2, title: "", text: "" }
   ]);
-  const [statementA, setStatementA] = useState("");
-  const [statementB, setStatementB] = useState("");
-  const [claimAmount, setClaimAmount] = useState("1800");
-  const [contested, setContested] = useState(true);
-  const [dispute, setDispute] = useState<DisputeReport | null>(null);
 
   async function syncHealth() {
     const { body } = await api<Health>("/api/agent/health");
@@ -200,8 +187,6 @@ export default function HardenPage() {
       { id: 1, title: t("clause.seedDelivery"), text: t("clause.seedDeliveryText") },
       { id: 2, title: t("clause.seedPayment"), text: t("clause.seedPaymentText") }
     ]);
-    setStatementA(t("dispute.statementBuyerDefault"));
-    setStatementB(t("dispute.statementSupplierDefault"));
   }
 
   async function build() {
@@ -310,36 +295,7 @@ export default function HardenPage() {
     if (h.ok) setHistory(h.body.entries || []);
   }
 
-  async function openDispute() {
-    setBusy(true);
-    setError("");
-    const statements = [
-      ...statementA.split("\n").filter(Boolean).map((text) => ({ party_id: "p_buyer", text, evidence_refs: [] })),
-      ...statementB.split("\n").filter(Boolean).map((text) => ({ party_id: "p_supplier", text, evidence_refs: [] }))
-    ];
-    try {
-      const { ok, body } = await api<DisputeReport | { error?: string }>("/api/agent/disputes", {
-        method: "POST",
-        body: JSON.stringify({
-          contract_id: contractId,
-          dispute_id: `dispute_${Date.now()}`,
-          event_date: new Date().toISOString(),
-          claims: [],
-          statements,
-          contested,
-          claim_amount: parseFloat(claimAmount) || null
-        })
-      });
-      if (!ok) throw new Error(String((body as { error?: string }).error || "dispute analysis failed"));
-      setDispute(body as DisputeReport);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  const steps: MsgKey[] = ["harden.stepContract", "harden.stepAnalyse", "harden.stepAncrage", "harden.stepLitige"];
+  const steps: MsgKey[] = ["harden.stepContract", "harden.stepAnalyse", "harden.stepAncrage"];
   const unnamedParties = parties.filter((p) => !partyDisplayName(p)).length;
 
   return (
@@ -699,7 +655,6 @@ export default function HardenPage() {
               <button className="btn btn-primary" onClick={acknowledge} disabled={busy}>
                 {t("findings.acknowledge")}
               </button>
-              <button className="btn" onClick={() => show("dispute")}>{t("findings.toDispute")}</button>
             </div>
           </div>
         )}
@@ -764,109 +719,6 @@ export default function HardenPage() {
               )}
             </div>
             <div style={{ display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
-              <button className="btn" onClick={() => show("dispute")}>{t("findings.toDispute")}</button>
-              <Link className="btn" href={`/contracts/${encodeURIComponent(contractId)}`}>
-                {t("accept.toDashboard")}
-              </Link>
-            </div>
-          </div>
-        )}
-
-        {step === "dispute" && (
-          <div>
-            <div className="card">
-              <p className="muted" style={{ marginTop: 0 }}>{t("dispute.intro")}</p>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <div>
-                  <label style={{ fontWeight: 600, fontSize: 13 }}>{t("dispute.versionBuyer")}</label>
-                  <textarea className="textarea" rows={5} value={statementA} placeholder={t("dispute.statementBuyerDefault")} onChange={(e) => setStatementA(e.target.value)} />
-                </div>
-                <div>
-                  <label style={{ fontWeight: 600, fontSize: 13 }}>{t("dispute.versionSupplier")}</label>
-                  <textarea className="textarea" rows={5} value={statementB} placeholder={t("dispute.statementSupplierDefault")} onChange={(e) => setStatementB(e.target.value)} />
-                </div>
-              </div>
-              <div style={{ display: "flex", gap: 14, marginTop: 12, alignItems: "center", flexWrap: "wrap" }}>
-                <label className="muted">{t("dispute.amount")}</label>
-                <input className="input" style={{ width: 110 }} value={claimAmount} onChange={(e) => setClaimAmount(e.target.value)} />
-                <label className="muted">{t("dispute.contested")}</label>
-                <select className="input" style={{ width: "auto" }} value={String(contested)} onChange={(e) => setContested(e.target.value === "true")}>
-                  <option value="true">{t("dispute.yes")}</option>
-                  <option value="false">{t("dispute.no")}</option>
-                </select>
-              </div>
-              <button className="btn btn-primary" style={{ marginTop: 14 }} onClick={openDispute} disabled={busy}>
-                {busy ? t("dispute.analysing") : t("dispute.analyse")}
-              </button>
-            </div>
-
-            {dispute && (
-              <>
-                <div className="card" style={{ marginTop: 12 }}>
-                  <h3>{t("dispute.applicableVersion")}</h3>
-                  <p className="muted">{(dispute.governing_version.explanation)}</p>
-                </div>
-                <div className="card" style={{ marginTop: 12 }}>
-                  <h3>
-                    {t("dispute.facts")}
-                    <span className="pill pill-ok" style={{ marginLeft: 8 }}>{dispute.fact_ledger.summary.agreed} {t("dispute.agreed")}</span>
-                    <span className="pill pill-warn" style={{ marginLeft: 6 }}>{dispute.fact_ledger.summary.disputed} {t("dispute.disputed")}</span>
-                    <span className="pill pill-accent" style={{ marginLeft: 6 }}>{dispute.fact_ledger.summary.unsupported} {t("dispute.unsupported")}</span>
-                  </h3>
-                  {dispute.fact_ledger.facts.map((f, i) => (
-                    <div className="row" key={i}>
-                      <span className={"pill " + (f.status === "agreed" ? "pill-ok" : f.status === "disputed" ? "pill-warn" : "pill-accent")}>{f.status}</span>
-                      <div className="row-main">
-                        <div className="row-title">{(f.fact)}</div>
-                        <div className="row-sub">
-                          {f.clause_ids.length ? "clauses " + f.clause_ids.map(String).join(", ") : t("dispute.noClause")}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  <p className="muted" style={{ fontSize: 12 }}>{(dispute.fact_ledger.note)}</p>
-                </div>
-                <div className="card" style={{ marginTop: 12 }}>
-                  <h3>{t("dispute.courtOutlook")} ({(dispute.batna.path_label)})</h3>
-                  <p className="muted">
-                    {t("dispute.duration")}{" "}
-                    {dispute.batna.duration_days
-                      ? `${dispute.batna.duration_days.low}–${dispute.batna.duration_days.high} ${t("dispute.days")}`
-                      : "—"}
-                    {" · "}
-                    {t("dispute.cost")}{" "}
-                    {dispute.batna.cost_amount
-                      ? `${dispute.batna.cost_amount.low}–${dispute.batna.cost_amount.high} TND`
-                      : "—"}
-                  </p>
-                  <p className="muted" style={{ fontSize: 12 }}>
-                    <strong>{t("dispute.source")}</strong> {(dispute.batna.source)}<br />
-                    {(dispute.batna.scope)}
-                    {(dispute.batna.caveats || []).map((c, i) => (
-                      <span key={i}><br />{(c)}</span>
-                    ))}
-                  </p>
-                </div>
-                <div className="card" style={{ marginTop: 12 }}>
-                  <h3>{t("dispute.settlement")}</h3>
-                  {dispute.settlement_options.map((o, i) => (
-                    <div className="row" key={i}>
-                      <span className="pill pill-warm">{(o.label)}</span>
-                      <div className="row-main">
-                        <div className="row-title">{o.monetary ? t("dispute.monetary") : t("dispute.nonMonetary")}</div>
-                        <div className="row-sub">{(o.detail)}</div>
-                      </div>
-                    </div>
-                  ))}
-                  <div className="banner banner-info">
-                    {(dispute.negotiation.human_gate_note)}
-                    {dispute.negotiation.lawyer_review_required && <><br /><strong>{t("dispute.lawyerReview")}</strong></>}
-                  </div>
-                </div>
-              </>
-            )}
-
-            <div style={{ marginTop: 14 }}>
               <Link className="btn" href={`/contracts/${encodeURIComponent(contractId)}`}>
                 {t("accept.toDashboard")}
               </Link>

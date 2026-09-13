@@ -2,7 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { api, esc, fmtTime, getMe, markSeen, type Me } from "@/lib/api";
+import { api, esc, fmtDate, fmtTime, getMe, markSeen, type Me } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import TopBar from "@/components/TopBar";
 import InvitePanel from "@/components/InvitePanel";
@@ -11,7 +11,42 @@ interface Message {
   sender: "owner" | "counterparty" | "insaf";
   body: string;
   sent_at: string;
-  reply_meta?: { summoned_by: string; rule_based: boolean; grounded: boolean };
+  reply_meta?: {
+    summoned_by: string;
+    rule_based: boolean;
+    grounded: boolean;
+    monitor?: boolean;
+    checkin_for?: string;
+    confirmation_for?: string;
+    outcome?: string;
+    anchored?: boolean;
+    amicable?: boolean;
+  };
+}
+
+interface Milestone {
+  milestone_id: string;
+  obligation_id: string;
+  kind: string;
+  action: string;
+  obligor_label: string;
+  obligee_label: string;
+  trigger_text: string;
+  due_date: string | null;
+  date_reference: string;
+  state: string;
+  days_until: number | null;
+  alert: string | null;
+  check_in: string;
+}
+
+interface Monitoring {
+  active: boolean;
+  as_of?: string;
+  phase?: string;
+  phase_reference?: string | null;
+  milestones?: Milestone[];
+  reason?: string;
 }
 
 function ThreadInner() {
@@ -30,6 +65,16 @@ function ThreadInner() {
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [spell, setSpell] = useState("");
+  const [monitoring, setMonitoring] = useState<Monitoring | null>(null);
+
+  const loadMonitor = useCallback(async () => {
+    if (!contractId) return;
+    const qs = token ? `?token=${encodeURIComponent(token)}` : "";
+    const { ok, body } = await api<Monitoring & { error?: string }>(
+      `/api/monitor/${encodeURIComponent(contractId)}${qs}`
+    );
+    if (ok) setMonitoring(body);
+  }, [contractId, token]);
 
   const load = useCallback(async () => {
     if (!contractId) return;
@@ -58,7 +103,8 @@ function ThreadInner() {
 
   useEffect(() => {
     load();
-  }, [load]);
+    loadMonitor();
+  }, [load, loadMonitor]);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -96,6 +142,59 @@ function ThreadInner() {
     }
     setMessages((prev) => [...(prev || []), body.message as Message]);
     setSpell("");
+    setBusy(false);
+  }
+
+  async function confirmMilestone(obligationId: string, outcome: string) {
+    if (busy) return;
+    setBusy(true);
+    const qs = token ? `?token=${encodeURIComponent(token)}` : "";
+    const { ok, body } = await api<{ error?: string }>(
+      `/api/monitor/${encodeURIComponent(contractId)}/confirm${qs}`,
+      { method: "POST", body: JSON.stringify({ obligation_id: obligationId, outcome, ...(token ? { token } : {}) }) }
+    );
+    if (!ok) {
+      setGate(String(body.error || t("err.couldNotPost")));
+      setBusy(false);
+      return;
+    }
+    await load();
+    await loadMonitor();
+    setBusy(false);
+  }
+
+  async function escalateMilestone() {
+    if (busy) return;
+    setBusy(true);
+    const qs = token ? `?token=${encodeURIComponent(token)}` : "";
+    const ids = (monitoring?.milestones || []).map((m) => m.obligation_id);
+    const { ok, body } = await api<{ error?: string }>(
+      `/api/monitor/${encodeURIComponent(contractId)}/escalate${qs}`,
+      { method: "POST", body: JSON.stringify({ obligation_ids: ids, ...(token ? { token } : {}) }) }
+    );
+    if (!ok) {
+      setGate(String(body.error || t("err.couldNotPost")));
+      setBusy(false);
+      return;
+    }
+    await load();
+    await loadMonitor();
+    setBusy(false);
+  }
+
+  async function advanceDemo() {
+    if (busy) return;
+    setBusy(true);
+    const { ok, body } = await api<{ error?: string }>(
+      `/api/monitor/${encodeURIComponent(contractId)}/advance`,
+      { method: "POST", body: JSON.stringify({ days: 4 }) }
+    );
+    if (!ok) {
+      setGate(String(body.error || t("err.demoFailed")));
+      setBusy(false);
+      return;
+    }
+    await loadMonitor();
     setBusy(false);
   }
 
@@ -139,6 +238,90 @@ function ThreadInner() {
             <p className="muted" style={{ marginTop: 0, fontSize: 13 }}>
               {t("thread.neutral")}
             </p>
+
+            {monitoring && monitoring.active && (
+              <div className="monitor">
+                <strong style={{ fontSize: 13 }}>{t("thread.monitorTitle")}</strong>
+                <p className="muted" style={{ margin: "4px 0 8px", fontSize: 12.5 }}>
+                  {t("thread.monitorBody")}
+                </p>
+
+                {monitoring.phase === "amicable" && (
+                  <div className="banner banner-warn" style={{ marginBottom: 10 }}>
+                    {t("thread.monitorAmicable")}
+                  </div>
+                )}
+
+                {(monitoring.milestones || []).map((m) => {
+                  const label =
+                    m.kind === "delivery"
+                      ? t("thread.monitorDelivery")
+                      : m.kind === "payment"
+                        ? t("thread.monitorPayment")
+                        : t("thread.monitorGeneric");
+                  const estimated = m.date_reference !== "absolute";
+                  const open =
+                    m.alert && !["performed", "breached"].includes(m.state);
+                  const overdue = m.alert === "overdue_unconfirmed";
+                  return (
+                    <div key={m.obligation_id} className="milestone-row" style={{ marginBottom: 8 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                        <strong style={{ fontSize: 13 }}>{label}</strong>
+                        {m.due_date && (
+                          <span style={{ fontSize: 13 }}>{fmtDate(m.due_date)}</span>
+                        )}
+                        {estimated && (
+                          <span className="pill" style={{ fontSize: 11 }}>{t("thread.monitorEstimated")}</span>
+                        )}
+                        {m.alert === "due_soon" && (
+                          <span className="pill pill-warn" style={{ fontSize: 11 }}>{t("thread.monitorDueSoon", { days: m.days_until ?? 0 })}</span>
+                        )}
+                        {m.alert === "due" && (
+                          <span className="pill pill-warn" style={{ fontSize: 11 }}>{t("thread.monitorDueToday")}</span>
+                        )}
+                        {overdue && (
+                          <span className="pill pill-warn" style={{ fontSize: 11 }}>{t("thread.monitorOverdue", { date: fmtDate(m.due_date) })}</span>
+                        )}
+                        {!m.alert && m.state === "performed" && (
+                          <span className="pill pill-ok" style={{ fontSize: 11 }}>{t("thread.monitorComplete")}</span>
+                        )}
+                      </div>
+                      <p className="muted" style={{ margin: "2px 0 0", fontSize: 12 }}>
+                        {m.obligor_label} → {m.obligee_label} · {m.trigger_text}
+                      </p>
+                      {isParticipant && open && (
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 6 }}>
+                          <button className="btn btn-primary" onClick={() => confirmMilestone(m.obligation_id, "performed")} disabled={busy}>
+                            {t("thread.monitorConfirmPerformed")}
+                          </button>
+                          <button className="btn" onClick={() => confirmMilestone(m.obligation_id, "not_yet")} disabled={busy}>
+                            {t("thread.monitorConfirmNotYet")}
+                          </button>
+                          {overdue && (
+                            <button className="btn btn-warn" onClick={() => confirmMilestone(m.obligation_id, "breached")} disabled={busy}>
+                              {t("thread.monitorBreach")}
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {isParticipant && (monitoring.milestones || []).some((m) => m.alert === "overdue_unconfirmed") && (
+                  <button className="btn btn-warm" onClick={escalateMilestone} disabled={busy} style={{ marginTop: 4 }}>
+                    {t("thread.monitorEscalate")}
+                  </button>
+                )}
+
+                {role === "owner" && monitoring.phase !== "amicable" && (
+                  <button className="btn" onClick={advanceDemo} disabled={busy} style={{ marginTop: 4, float: "right" }}>
+                    {t("thread.monitorAdvance")}
+                  </button>
+                )}
+                <div style={{ clear: "both" }} />
+              </div>
+            )}
 
             <div className="thread-scroll" ref={scrollRef}>
               {messages === null ? (
