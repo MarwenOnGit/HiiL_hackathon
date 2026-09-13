@@ -16,6 +16,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from blockchain_client import InMemoryChain
+from blockchain_client.client import EventType
 from config import load_profile
 from core.schemas import Party
 from core.taxonomy import ObligationState
@@ -80,7 +81,7 @@ class DateProvenance(unittest.TestCase):
             "Article 2 : Le fournisseur livre les marchandises commandees dans "
             "un delai de 7 jours ouvrables a compter de la confirmation de la "
             "commande. "
-            "Article 4 : L'acheteur regle le prix convenu par virement bancaire "
+            "\n\nArticle 4 : L'acheteur regle le prix convenu par virement bancaire "
             "dans un delai de 30 jours a compter de la livraison."
         )
         _, contract, report = _harden(text)
@@ -100,12 +101,87 @@ class DateProvenance(unittest.TestCase):
     def test_absolute_date_in_text_wins(self):
         text = (
             "Article 2 : Le livreur livre au plus tard le 28/02/2026. "
-            "Article 4 : paiement net 30."
+            "\n\nArticle 4 : paiement net 30."
         )
         _, contract, report = _harden(text)
         delivery = next(o for o in report.obligations if o.kind == "delivery")
         self.assertEqual(delivery.date_reference, "absolute")
         self.assertEqual(delivery.due_date.date().isoformat(), "2026-02-28")
+
+
+class DeliveryDoesNotWaitOnItself(unittest.TestCase):
+    """A delivery clause says "livraison"; that must not make it event_linked.
+
+    When both duties landed in one segment, the delivery inherited the
+    payment's "à compter de la livraison" anchor, lost its due date, and never
+    came due — so the monitor asked nobody anything, silently.
+    """
+
+    TWO_DUTIES_ONE_CLAUSE = (
+        "Le fournisseur livre les marchandises commandees dans un delai de 7 "
+        "jours ouvrables a compter de la confirmation de la commande, et "
+        "l'acheteur regle le prix convenu par virement bancaire dans un delai "
+        "de 30 jours a compter de la livraison."
+    )
+
+    def test_the_delivery_keeps_its_estimated_date(self):
+        _, _, report = _harden(self.TWO_DUTIES_ONE_CLAUSE)
+        delivery = next(o for o in report.obligations if o.kind == "delivery")
+        self.assertEqual(delivery.date_reference, "estimated")
+        self.assertIsNotNone(delivery.due_date)
+
+    def test_that_delivery_actually_comes_due(self):
+        _, contract, report = _harden(self.TWO_DUTIES_ONE_CLAUSE)
+        delivery = next(o for o in report.obligations if o.kind == "delivery")
+        milestones = build_schedule(contract, as_of=delivery.due_date)
+        due = next(m for m in milestones if m.kind == "delivery")
+        self.assertEqual(due.alert, "due")
+        self.assertNotEqual(check_in_text(due, "fr"), "")
+
+    def test_a_payment_still_waits_for_the_delivery(self):
+        """The guard must not disable event_linked for the side that does wait."""
+        text = (
+            "Article 2 : Le fournisseur livre les marchandises commandees dans "
+            "un delai de 7 jours ouvrables a compter de la confirmation de la "
+            "commande."
+            "\n\nArticle 4 : L'acheteur regle le prix convenu par virement "
+            "bancaire dans un delai de 30 jours a compter de la livraison."
+        )
+        _, _, report = _harden(text)
+        payment = next(o for o in report.obligations if o.kind == "payment")
+        self.assertEqual(payment.date_reference, "event_linked")
+        self.assertIsNone(payment.due_date)
+
+
+class TheDemoClockAccumulates(unittest.TestCase):
+    """Pressing "+4 jours" twice must reach day 8, not stay at day 4.
+
+    Assigning the offset pinned the clock, so no deadline could ever pass and
+    the breach -> amicable half of the flow could not be demonstrated at all.
+    """
+
+    def test_repeated_advances_add_up(self):
+        _, contract, _ = _harden(SEED.read_text(encoding="utf-8"))
+        for _ in range(3):
+            current = int(contract.metadata.get("monitor_offset_days", 0) or 0)
+            contract.metadata["monitor_offset_days"] = current + 4
+        self.assertEqual(contract.metadata["monitor_offset_days"], 12)
+        self.assertEqual(
+            monitor_as_of(contract, JAN).date(), (JAN + timedelta(days=12)).date()
+        )
+
+    def test_an_advanced_clock_eventually_makes_a_deadline_pass(self):
+        text = (
+            "Article 2 : Le fournisseur livre les marchandises commandees dans "
+            "un delai de 7 jours ouvrables a compter de la confirmation de la "
+            "commande."
+        )
+        _, contract, report = _harden(text)
+        delivery = next(o for o in report.obligations if o.kind == "delivery")
+        contract.metadata["monitor_offset_days"] = 11
+        milestones = build_schedule(contract, as_of=monitor_as_of(contract, JAN))
+        overdue = next(m for m in milestones if m.obligation_id == delivery.obligation_id)
+        self.assertEqual(overdue.alert, "overdue_unconfirmed")
 
 
 class ScheduleAndConfirm(unittest.TestCase):
@@ -115,12 +191,43 @@ class ScheduleAndConfirm(unittest.TestCase):
         for m in milestones:
             self.assertEqual(check_in_text(m, "fr"), "")
 
+    def test_a_breach_that_is_later_met_is_cured_not_overwritten(self):
+        """Answering 'performed' after a breach must not erase the breach."""
+        text = (
+            "Article 2 : Le fournisseur livre les marchandises commandees dans "
+            "un delai de 7 jours ouvrables a compter de la confirmation de la "
+            "commande."
+        )
+        chain, contract, report = _harden(text)
+        delivery = next(o for o in report.obligations if o.kind == "delivery")
+        store = _FakeStore()
+        confirm_obligation(
+            contract, delivery.obligation_id, "breached",
+            chain=chain, store=store, now=JAN, party_id="p_buyer", lang="fr",
+        )
+        self.assertEqual(delivery.state, ObligationState.BREACHED)
+
+        result = confirm_obligation(
+            contract, delivery.obligation_id, "performed",
+            chain=chain, store=store, now=JAN, party_id="p_supplier", lang="fr",
+        )
+        self.assertEqual(delivery.state, ObligationState.CURED)
+        self.assertEqual(result["state"], str(ObligationState.CURED))
+
+        # Both facts stay on the chain; neither replaces the other.
+        kinds = [
+            e.event_type for e in chain.fetch_history(contract.contract_id)
+            if hasattr(e, "event_type")
+        ]
+        self.assertIn(EventType.OBLIGATION_BREACHED, kinds)
+        self.assertIn(EventType.OBLIGATION_PERFORMED, kinds)
+
     def test_confirming_delivery_binds_event_linked_payment(self):
         text = (
             "Article 2 : Le fournisseur livre les marchandises commandees dans "
             "un delai de 7 jours ouvrables a compter de la confirmation de la "
             "commande. "
-            "Article 4 : L'acheteur regle le prix convenu par virement bancaire "
+            "\n\nArticle 4 : L'acheteur regle le prix convenu par virement bancaire "
             "dans un delai de 30 jours a compter de la livraison."
         )
         chain, contract, report = _harden(text)

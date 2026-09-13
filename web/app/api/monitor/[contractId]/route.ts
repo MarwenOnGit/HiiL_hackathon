@@ -66,14 +66,21 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ cont
 function postIdempotentCheckIns(contractId: string, monitoring: any): string[] {
   if (!monitoring?.active || !Array.isArray(monitoring.milestones)) return [];
   const existing = db.getMessages(contractId);
+  // Keyed by obligation AND alert level, not by obligation alone. Asking once
+  // per obligation meant the thread warned "due in 3 days" and then went quiet
+  // forever — the deadline could pass and the "it is overdue, did it arrive?"
+  // question was never put to anyone. Existing messages already carry `alert`,
+  // so this reads old threads correctly without a migration.
+  const key = (obligationId: string, alert: string | null | undefined) =>
+    `${obligationId}:${alert ?? ""}`;
   const already = new Set(
     existing
       .filter((m: any) => m.sender === "insaf" && m.reply_meta?.monitor && m.reply_meta?.checkin_for)
-      .map((m: any) => m.reply_meta.checkin_for)
+      .map((m: any) => key(m.reply_meta.checkin_for, m.reply_meta.alert))
   );
   const posted: string[] = [];
   for (const ms of monitoring.milestones) {
-    if (!ms.check_in || !ms.obligation_id || already.has(ms.obligation_id)) continue;
+    if (!ms.check_in || !ms.obligation_id || already.has(key(ms.obligation_id, ms.alert))) continue;
     const message = {
       sender: "insaf",
       body: ms.check_in,

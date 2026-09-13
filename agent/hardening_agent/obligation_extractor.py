@@ -155,7 +155,7 @@ def extract_obligations(
                 kind = "payment"
 
             due_date, date_reference = _bind_due_date(
-                clause.text, days=days, effective=effective
+                clause.text, days=days, effective=effective, kind=kind
             )
             obligations.append(Obligation(
                 obligation_id=f"ob_{counter:03d}",
@@ -201,7 +201,7 @@ def due_from(trigger_event, days: int | None):
 
 
 def _bind_due_date(
-    clause_text: str, *, days: int | None, effective: datetime | None
+    clause_text: str, *, days: int | None, effective: datetime | None, kind: str = "other"
 ) -> tuple[datetime | None, str]:
     """Provenance of a due date, in order of how much evidence backs it.
 
@@ -221,7 +221,13 @@ def _bind_due_date(
         if absolute is not None:
             return absolute, "absolute"
     if days is not None:
-        if _EVENT_ANCHOR.search(normalise(clause_text)):
+        # Only a duty other than the delivery itself can be waiting on one.
+        # A delivery clause naturally says "livraison", so matching the word
+        # alone made the delivery wait on itself: it got due_date=None, never
+        # came due, and the monitor never asked about it. This is also why a
+        # payment and a delivery landing in the same segment used to disable
+        # the whole schedule.
+        if kind != "delivery" and _EVENT_ANCHOR.search(normalise(clause_text)):
             return None, "event_linked"
         if effective is not None:
             return effective + timedelta(days=days), "estimated"

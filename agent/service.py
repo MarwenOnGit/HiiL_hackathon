@@ -520,7 +520,15 @@ def admin_advance(body: AdvanceBody) -> dict[str, Any]:
     if body.days == 0:
         contract.metadata.pop("monitor_offset_days", None)
     else:
-        contract.metadata["monitor_offset_days"] = int(body.days)
+        # Accumulate. Assigning meant the "+4 jours" button pinned the clock at
+        # day 4 however often it was pressed, so a deadline could never pass
+        # and the breach → amicable half of the flow was unreachable from the
+        # UI. Zero still means "back to today".
+        try:
+            current = int(contract.metadata.get("monitor_offset_days", 0) or 0)
+        except (TypeError, ValueError):
+            current = 0
+        contract.metadata["monitor_offset_days"] = current + int(body.days)
     RUNTIME.store.save(contract)
     return monitoring_for(contract)
 

@@ -177,7 +177,16 @@ def confirm_obligation(
 
     tx = None
     if outcome == "performed":
-        obligation.state = ObligationState.PERFORMED
+        # A deadline that was missed and then met is not the same thing as one
+        # met on time, and the taxonomy already has the word for it. Writing
+        # PERFORMED over a BREACHED obligation would erase the breach from the
+        # ledger; CURED keeps both facts, and the earlier OBLIGATION_BREACHED
+        # attestation stays on the chain either way.
+        obligation.state = (
+            ObligationState.CURED
+            if obligation.state is ObligationState.BREACHED
+            else ObligationState.PERFORMED
+        )
     elif outcome == "breached":
         obligation.state = ObligationState.BREACHED
     obligation.state_changed_at = now
