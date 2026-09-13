@@ -79,13 +79,19 @@ export default function AnalysisPanel({ analysis }: { analysis: Analysis }) {
       {counts && (
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
           {counts.unenforceable > 0 && (
-            <span className="pill pill-danger">{counts.unenforceable} {t("an.kindUnenforceable")}</span>
+            <span className="pill pill-danger">
+              {counts.unenforceable} {counts.unenforceable > 1 ? t("an.countUnenforceablePl") : t("an.countUnenforceable")}
+            </span>
           )}
           {counts.ambiguous > 0 && (
-            <span className="pill pill-warn">{counts.ambiguous} {t("an.kindAmbiguous")}</span>
+            <span className="pill pill-warn">
+              {counts.ambiguous} {counts.ambiguous > 1 ? t("an.countAmbiguousPl") : t("an.countAmbiguous")}
+            </span>
           )}
           {counts.asymmetric > 0 && (
-            <span className="pill pill-warm">{counts.asymmetric} {t("an.kindAsymmetric")}</span>
+            <span className="pill pill-warm">
+              {counts.asymmetric} {counts.asymmetric > 1 ? t("an.countAsymmetricPl") : t("an.countAsymmetric")}
+            </span>
           )}
         </div>
       )}

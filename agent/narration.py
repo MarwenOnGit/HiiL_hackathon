@@ -8,11 +8,12 @@ one rule:
     the model is a narrator, never a source.
 
 Everything it is allowed to say is in the prompt already. It receives the
-structured digest and the retrieved legal excerpts, and nothing else — never the
-contract text, which keeps the token bill small and keeps invariant 3's spirit
-(only derived facts leave the off-chain store). Afterwards `core.grounding`
-checks the output and the narrative is **discarded whole** if the model cited an
-article it was not given, or reached for a forbidden phrasing.
+structured digest and the retrieved legal excerpts, and nothing else. The
+document is never sent whole — each agent's digest decides what travels, and
+Agent 1's includes a bounded quote of the clauses it flagged so the narrative
+can name the wording at issue. Afterwards `core.grounding` checks the output and
+the narrative is **discarded whole** if the model cited an article it was not
+given, or reached for a forbidden phrasing.
 
 Discarding rather than repairing is the important decision. A model that
 invented one article has not earned trust in its other sentences, and the

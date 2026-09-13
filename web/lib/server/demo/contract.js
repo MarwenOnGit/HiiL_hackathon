@@ -14,65 +14,69 @@
 
 const CONTRACT_TEXT = `CONTRAT DE FOURNITURE DE PANNEAUX DE BOIS
 
-Article 1 - Parties
-Entre les soussignes: Atelier Trabelsi, menuiserie sise a Tunis, designe ci-apres
-"l'Acheteur", et Societe Bois du Nord, designe ci-apres "le Fournisseur".
+Article 1 — Parties
+Entre les soussignés :
+Atelier Trabelsi, entreprise de menuiserie sise à Tunis, ci-après dénommée
+« l'Acheteur »,
+et
+Société Bois du Nord, société à responsabilité limitée sise à Grombalia,
+ci-après dénommée « le Fournisseur ».
 
-Article 2 - Objet du contrat
-Le Fournisseur s'engage a fournir a l'Acheteur des panneaux de contreplaque de
-18mm, en quantite approximative de 40 unites par mois.
+Article 2 — Objet du contrat
+Le Fournisseur s'engage à fournir à l'Acheteur des panneaux de contreplaqué d'une
+épaisseur de 18 mm, en quantité approximative de 40 unités par mois.
 
-Article 3 - Prix
-Le prix est fixe a 45 TND par panneau, soit un montant de 1800 TND par commande
-mensuelle. Le prix pourra etre revise selon le prix du marche.
+Article 3 — Prix
+Le prix unitaire est fixé à 45 TND par panneau, soit 1 800 TND pour une commande
+mensuelle. Le prix pourra être révisé selon le prix du marché.
 
-Article 4 - Livraison
-Le Fournisseur livre les marchandises dans un delai raisonnable a compter de la
-reception de la commande. En cas d'empechement, il previendra l'Acheteur dans
-les meilleurs delais.
+Article 4 — Livraison
+Le Fournisseur livre les marchandises dans un délai raisonnable à compter de la
+réception de la commande. En cas d'empêchement susceptible d'affecter le délai de
+livraison, le Fournisseur en informe l'Acheteur dans les meilleurs délais.
 
-Article 5 - Paiement
-L'Acheteur procede au paiement a 30 jours a compter de la livraison, par
-virement bancaire.
+Article 5 — Paiement
+L'Acheteur effectue le paiement dans un délai de trente (30) jours à compter de la
+livraison, par virement bancaire.
 
-Article 6 - Qualite
-Les marchandises seront conformes a la qualite convenue entre les parties.
+Article 6 — Qualité
+Les marchandises seront conformes à la qualité convenue entre les parties.
 
-Article 7 - Resiliation
-Le Fournisseur pourra resilier a tout moment et sans preavis en cas de
-difficulte d'approvisionnement. Le Fournisseur ne pourra en aucun cas etre tenu
-responsable des consequences d'une rupture de stock.`;
+Article 7 — Résiliation
+Le Fournisseur pourra résilier à tout moment et sans préavis en cas de difficulté
+d'approvisionnement. Le Fournisseur ne pourra en aucun cas être tenu responsable des
+conséquences d'une rupture de stock.`;
 
 // Verbatim from agent/rag/corpus/fr/normative/cocFR.md. Quoted, not paraphrased:
 // the whole point of showing an excerpt is that the reader can check it.
 const COC = {
   242: {
     source_doc: "Code des obligations et des contrats",
-    article_ref: "Article 242",
+    article_ref: "art. 242",
     excerpt:
       "Les obligations contractuelles valablement formées tiennent lieu de loi à ceux qui les ont faites, et ne peuvent être révoquées que de leur consentement mutuel ou dans les cas prévus par la loi."
   },
   243: {
     source_doc: "Code des obligations et des contrats",
-    article_ref: "Article 243",
+    article_ref: "art. 243",
     excerpt:
       "Tout engagement doit être exécuté de bonne foi, et oblige, non seulement à ce qui y est exprimé, mais aussi à toutes les suites que la loi, l'usage ou l'équité donnent à l'obligation d'après sa nature."
   },
   244: {
     source_doc: "Code des obligations et des contrats",
-    article_ref: "Article 244",
+    article_ref: "art. 244",
     excerpt:
       "On ne peut stipuler d'avance qu'on ne sera pas tenu de sa faute lourde ou de son dol."
   },
   579: {
     source_doc: "Code des obligations et des contrats",
-    article_ref: "Article 579",
+    article_ref: "art. 579",
     excerpt:
       "Le prix de la vente doit être déterminé. On ne peut en rapporter la détermination à un tiers ni acheter au prix payé par un tiers, à moins que le prix ne soit connu des contractants. On peut, cependant, s'en référer au prix fixé dans une mercuriale, ou tarif déterminé, ou à la moyenne des prix du marché, lorsqu'il s'agit de marchandises dont le prix ne subit pas de variations."
   },
   63: {
     source_doc: "Code des obligations et des contrats",
-    article_ref: "Article 63",
+    article_ref: "art. 63",
     excerpt:
       "La chose qui forme l'objet de l'obligation doit être déterminée au moins quant à son espèce. La quotité de la chose peut être incertaine pourvu qu'elle puisse être déterminée par la suite."
   }
@@ -98,7 +102,7 @@ const RECOMMENDATIONS = [
     rationale:
       "La clause exonère le Fournisseur de toute responsabilité « en aucun cas ». Une exonération rédigée aussi largement couvre nécessairement la faute lourde et le dol, ce que le COC interdit de stipuler à l'avance.",
     original:
-      "Le Fournisseur ne pourra en aucun cas etre tenu responsable des consequences d'une rupture de stock.",
+      "Le Fournisseur ne pourra en aucun cas être tenu responsable des conséquences d'une rupture de stock.",
     proposed:
       "Le Fournisseur n'est pas tenu des conséquences d'une rupture de stock résultant d'un événement de force majeure au sens de l'article 283 du COC. Cette exclusion ne s'applique ni à la faute lourde ni au dol du Fournisseur, conformément à l'article 244 du COC.",
     applied: false,
@@ -110,9 +114,9 @@ const RECOMMENDATIONS = [
     clause_id: "cl_007",
     risk_kind: "unenforceable",
     rationale:
-      "La résiliation « à tout moment et sans préavis » au profit d'une seule partie revient à permettre la révocation unilatérale d'un contrat valablement formé, hors des cas prévus par la loi.",
+      "La clause permet au Fournisseur de résilier le contrat à tout moment et sans préavis, sans accorder la même faculté à l'Acheteur. Cette clause crée un déséquilibre entre les parties et son application doit être appréciée au regard des règles légales applicables.",
     original:
-      "Le Fournisseur pourra resilier a tout moment et sans preavis en cas de difficulte d'approvisionnement.",
+      "Le Fournisseur pourra résilier à tout moment et sans préavis en cas de difficulté d'approvisionnement.",
     proposed:
       "Chaque partie peut résilier le contrat moyennant un préavis écrit de trente (30) jours. En cas de difficulté d'approvisionnement durable, le Fournisseur en informe l'Acheteur sans délai ; la résiliation prend effet trente (30) jours après cette notification.",
     applied: false,
@@ -124,8 +128,8 @@ const RECOMMENDATIONS = [
     clause_id: "cl_003",
     risk_kind: "unenforceable",
     rationale:
-      "« Révisé selon le prix du marché » ne désigne ni mercuriale, ni tarif, ni moyenne identifiable : le prix n'est pas déterminable, et la révision est laissée à l'appréciation d'une seule partie.",
-    original: "Le prix pourra etre revise selon le prix du marche.",
+      "Mécanisme de révision du prix insuffisamment défini : « le prix du marché » ne renvoie ni à une mercuriale, ni à un tarif, ni à une moyenne identifiable, et la révision est laissée à l'appréciation d'une seule partie.",
+    original: "Le prix pourra être révisé selon le prix du marché.",
     proposed:
       "Le prix unitaire est révisable au 1er janvier de chaque année, par application de la variation de l'indice des prix à la production industrielle publié par l'Institut National de la Statistique. Toute révision est notifiée par écrit trente (30) jours avant sa prise d'effet.",
     applied: false,
@@ -137,8 +141,8 @@ const RECOMMENDATIONS = [
     clause_id: "cl_002",
     risk_kind: "ambiguous",
     rationale:
-      "Une quantité approximative empêche de constater une livraison incomplète : sans quotité déterminable, 28 panneaux et 40 panneaux sont également conformes.",
-    original: "en quantite approximative de 40 unites par mois",
+      "La quantité est annoncée comme approximative : sans quotité déterminable, une livraison de 28 panneaux et une livraison de 40 panneaux sont également conformes au contrat.",
+    original: "en quantité approximative de 40 unités par mois",
     proposed:
       "Le Fournisseur livre quarante (40) panneaux par mois, avec une tolérance de ±5 %. En deçà, la livraison est réputée incomplète et l'Acheteur peut en exiger le complément sous quinze (15) jours.",
     applied: false,
@@ -150,8 +154,8 @@ const RECOMMENDATIONS = [
     clause_id: "cl_004",
     risk_kind: "ambiguous",
     rationale:
-      "« Délai raisonnable » n'a pas de valeur chiffrée : aucun retard ne peut être constaté objectivement, et chaque retard se renégocie de zéro.",
-    original: "dans un delai raisonnable a compter de la reception de la commande",
+      "Aucun délai chiffré n'est fixé : un retard ne peut être constaté objectivement, et chaque retard se renégocie au cas par cas.",
+    original: "dans un délai raisonnable à compter de la réception de la commande",
     proposed:
       "Le Fournisseur livre au plus tard quinze (15) jours calendaires après réception de la commande. Tout dépassement ouvre droit à une pénalité de 0,5 % du montant de la commande par jour de retard, plafonnée à 10 %.",
     applied: false,
@@ -167,8 +171,8 @@ const RECOMMENDATIONS = [
     clause_id: "cl_006",
     risk_kind: "ambiguous",
     rationale:
-      "« Qualité convenue entre les parties » ne renvoie à aucun standard vérifiable : en cas de litige sur la conformité, rien ne permet de trancher.",
-    original: "Les marchandises seront conformes a la qualite convenue entre les parties.",
+      "La clause ne définit aucun critère objectif permettant de vérifier la conformité des marchandises. En cas de désaccord sur la qualité livrée, rien ne permet de trancher.",
+    original: "Les marchandises seront conformes à la qualité convenue entre les parties.",
     proposed:
       "Les panneaux sont conformes à la norme NT 21.86 (contreplaqué à usage intérieur), épaisseur 18 mm ±0,5 mm, taux d'humidité ≤ 12 %. L'Acheteur dispose de sept (7) jours après livraison pour émettre des réserves écrites.",
     applied: false,
@@ -184,9 +188,9 @@ const RECOMMENDATIONS = [
     clause_id: "cl_007",
     risk_kind: "asymmetric",
     rationale:
-      "La faculté de résiliation ne joue que dans un sens. Signalé pour information : une clause déséquilibrée reste valable, mais l'Acheteur doit savoir qu'il ne dispose pas de la même sortie.",
+      "La faculté de résiliation ne joue que dans un sens. Signalé pour information : une clause déséquilibrée n'est pas nécessairement écartée, mais l'Acheteur doit savoir qu'il ne dispose pas de la même sortie.",
     original:
-      "Le Fournisseur pourra resilier a tout moment [...] (aucune faculté équivalente pour l'Acheteur)",
+      "Le Fournisseur pourra résilier à tout moment et sans préavis […] (aucune faculté équivalente pour l'Acheteur)",
     proposed: "",
     applied: false,
     grounded: false,
@@ -208,28 +212,28 @@ const GAPS = [
     severity: "critical"
   },
   {
-    label: "Conséquence d'un retard de livraison",
-    why: "Si rien n'est prévu, chaque retard se négocie de zéro, au moment où les deux parties sont le moins disposées à s'entendre.",
+    label: "Sanctions ou conséquences en cas de retard de livraison",
+    why: "Si rien n'est prévu, chaque retard se négocie au cas par cas, au moment où les deux parties sont le moins disposées à s'entendre.",
     severity: "high"
   },
   {
-    label: "Conséquence d'un retard de paiement",
-    why: "Symétrique du précédent : le Fournisseur a besoin du même point d'ancrage que l'Acheteur.",
+    label: "Sanctions ou conséquences en cas de retard de paiement",
+    why: "Symétrique du précédent : le Fournisseur a besoin du même point de référence que l'Acheteur.",
     severity: "high"
   },
   {
-    label: "Règlement des différends",
-    why: "Convenir à froid de la manière de régler un désaccord coûte bien moins cher qu'à chaud.",
+    label: "Clause de règlement des litiges",
+    why: "Le document ne prévoit pas la manière de régler un désaccord. Convenir à froid de cette procédure coûte bien moins cher qu'à chaud.",
     severity: "medium"
   },
   {
     label: "Force majeure",
-    why: "Sans clause, toute interruption extérieure devient discutable — et l'article 7 tente précisément de combler ce vide par une exonération trop large.",
+    why: "Le document ne précise pas les conséquences d'un événement de force majeure susceptible d'empêcher ou de retarder son exécution. L'article 7 tente de combler ce vide par une exonération trop large.",
     severity: "medium"
   },
   {
     label: "Droit applicable et juridiction compétente",
-    why: "Les deux parties sont établies en Tunisie, mais rien ne le dit. En cas de litige, la compétence se discute avant même le fond.",
+    why: "Le document ne précise ni le droit applicable ni la juridiction compétente en cas de litige. Ces éléments permettent de déterminer le cadre juridique applicable et le tribunal compétent en cas de contentieux.",
     severity: "low"
   }
 ];

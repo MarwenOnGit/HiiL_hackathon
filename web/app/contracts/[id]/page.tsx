@@ -33,7 +33,19 @@ const STATE_KEYS: Record<string, MsgKey> = {
 };
 
 const EVENT_LABELS: Record<string, MsgKey> = {
-  analysis_completed: "events.analysis"
+  analysis_completed: "events.analysis_completed",
+  obligation_performed: "events.obligation_performed",
+  obligation_breached: "events.obligation_breached",
+  obligation_attested: "events.obligation_attested",
+  dispute_opened: "events.dispute_opened",
+  dispute_resolved: "events.dispute_resolved",
+  settlement_signed: "events.settlement_signed"
+};
+
+// Internal party ids must never reach the screen (item 20).
+const PARTY_LABELS: Record<string, MsgKey> = {
+  p_buyer: "party.p_buyer",
+  p_supplier: "party.p_supplier"
 };
 
 const DOCTYPE_KEYS: Record<string, MsgKey> = {
@@ -229,6 +241,7 @@ function longRow(
       {versions && (
         <div className="card" style={{ marginTop: 14 }}>
           <h3>{t("detail.versionHistory")}</h3>
+          <p className="muted" style={{ fontSize: 12.5, marginTop: -8 }}>{t("detail.versionsNote")}</p>
           {versions.map((v) => (
             <div className="row" key={v.version_id}>
               <span className="hash-tag">{v.version_id}</span>
@@ -252,12 +265,16 @@ function longRow(
           {obligations.length === 0 && <p className="muted">{t("detail.noObligations")}</p>}
           {obligations.map((o) => (
             <div className="row" key={o.obligation_id}>
-              <span className="pill pill-accent">{esc(o.obligor)}</span>
+              <span className="pill pill-accent">{PARTY_LABELS[o.obligor] ? t(PARTY_LABELS[o.obligor]) : esc(o.obligor)}</span>
               <div className="row-main">
                 <div className="row-title">{esc(o.action)}</div>
                 <div className="row-sub">
-                  → {esc(o.obligee)} · {esc(o.trigger)}
-                  {o.due_date ? <> · {t("dashboard.until")} {fmtDate(o.due_date)}</> : ""}
+                  → {PARTY_LABELS[o.obligee] ? t(PARTY_LABELS[o.obligee]) : esc(o.obligee)} · {esc(o.trigger)}
+                  {o.due_date ? (
+                    <> · {o.state === "performed"
+                      ? t("ms.performedOn", { date: fmtDate(o.due_date) })
+                      : t("ms.dueOn", { date: fmtDate(o.due_date) })}</>
+                  ) : ""}
                 </div>
               </div>
               <span className={"pill " + (o.state === "pending" ? "pill-warn" : o.state === "performed" ? "pill-ok" : "pill-accent")}>{stateLabel(o.state)}</span>
@@ -277,7 +294,13 @@ function longRow(
           ) : (
             history.map((e, i) => (
               <div className="row" key={i}>
-                <span className="pill">{docTypeLabel(e.detail?.doc_type) || (EVENT_LABELS[e.detail?.event_type] ? t(EVENT_LABELS[e.detail.event_type]) : e.detail?.event_type)}</span>
+                <span className="pill">
+                  {e.detail?.doc_type
+                    ? docTypeLabel(e.detail.doc_type)
+                    : EVENT_LABELS[e.detail?.event_type]
+                      ? t(EVENT_LABELS[e.detail.event_type])
+                      : e.detail?.event_type}
+                </span>
                 <div className="row-main">
                   <div className="row-title mono" style={{ fontSize: 12.5 }}>{esc(String(e.tx_hash).slice(0, 22))}…</div>
                   <div className="row-sub">

@@ -111,6 +111,9 @@ def health() -> dict[str, Any]:
         # Stated so nothing downstream has to guess how much a party
         # identifier is worth. It is pseudonymous, not authenticated.
         "identity": IDENTITY_MODEL,
+        # Same discipline for the model backend: whether prose is generated,
+        # by which model, and if not, why not. Never the key.
+        "llm": RUNTIME.llm_status(),
     }
 
 
@@ -158,6 +161,7 @@ async def harden_endpoint(
             chain=RUNTIME.chain,
             store=RUNTIME.store,
             effective_from=_parse_when(effective_from),
+            llm=RUNTIME.llm,
         )
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
@@ -281,6 +285,7 @@ def build_contract(body: BuildBody) -> dict[str, Any]:
         store=RUNTIME.store,
         effective_from=_parse_when(body.effective_from),
         metadata={"essentials": essentials_meta(essentials)},
+        llm=RUNTIME.llm,
     )
     return {
         "report": report.as_dict(),
@@ -633,7 +638,7 @@ class DisputeBody(BaseModel):
 
 
 @app.post("/disputes")
-def open_dispute(body: DisputeBody) -> dict[str, Any]:
+def open_dispute(body: DisputeBody, request: Request) -> dict[str, Any]:
     if not RUNTIME.store.exists(body.contract_id):
         raise HTTPException(status_code=404, detail="unknown contract")
     contract = RUNTIME.store.get(body.contract_id)
@@ -658,6 +663,8 @@ def open_dispute(body: DisputeBody) -> dict[str, Any]:
             contested=body.contested,
             claim_amount=body.claim_amount,
             chain=RUNTIME.chain,
+            llm=RUNTIME.llm,
+            language=_lang(request),
         )
     except NoGoverningVersion as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
@@ -708,7 +715,8 @@ def ask_contract(body: AskBody) -> dict[str, Any]:
     if not RUNTIME.store.exists(body.contract_id):
         raise HTTPException(status_code=404, detail="unknown contract")
     contract = RUNTIME.store.get(body.contract_id)
-    reply = answer_question(contract, body.question, RUNTIME.retriever)
+    reply = answer_question(contract, body.question, RUNTIME.retriever,
+                            llm=RUNTIME.llm)
     return {
         "contract_id": body.contract_id,
         "reply": reply.as_dict(),

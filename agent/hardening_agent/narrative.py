@@ -1,9 +1,14 @@
 """Agent 1's narrator: reads the audit out loud, in the contract's language.
 
 The analysis is already done and is entirely deterministic. This module builds
-a compact digest of it and asks the model to explain it to a PME owner. The
-contract text itself is never sent — only the findings, which is both the
-cheaper prompt and the one that keeps the document in off-chain storage.
+a compact digest of it and asks the model to explain it to a PME owner.
+
+The document is never sent whole. What travels is the findings, plus a bounded
+quote (`MAX_CLAUSE_QUOTE` characters) of each clause that was actually flagged
+— because "clause cl_0004 is ambiguous" is not useful advice unless the reader
+can see that the words at issue are "délai raisonnable". A clause with no
+finding against it is never quoted at all, so the size of the prompt tracks the
+number of problems rather than the length of the contract.
 
 Nothing here can change the audit. If the narrator is unavailable, discarded,
 or slow, `harden()` returns exactly what it returned before.
@@ -24,6 +29,9 @@ MAX_GAPS = 10
 MAX_RECOMMENDATIONS = 12
 MAX_OBLIGATIONS = 12
 MAX_CITATIONS = 8
+# How much of a flagged clause may be quoted into the prompt. Enough to show
+# the offending wording, never enough to reconstruct the document.
+MAX_CLAUSE_QUOTE = 180
 
 
 def dominant_language(report: Any) -> str:
@@ -70,16 +78,26 @@ def digest(report: Any) -> str:
     if report.recommendations:
         lines.append("")
         lines.append("RISQUES PAR CLAUSE :")
+        # Grouped by clause, so a clause carrying two findings is quoted once
+        # and its findings listed under it. Repeating the quote per finding
+        # meant a heavily flagged clause could be sent several times over —
+        # paying twice for text the model had already read, and burying the
+        # second finding under a duplicate of the first.
+        grouped: dict[str, list[Any]] = {}
         for rec in report.recommendations[:MAX_RECOMMENDATIONS]:
-            refs = ", ".join(
-                r.article_ref for r in rec.legal_basis if r.article_ref
-            )
-            basis = f" | extrait retrouve: {refs}" if refs else " | aucun extrait retrouve"
-            original = " ".join(str(rec.original).split())[:180]
-            lines.append(
-                f"- clause {rec.clause_id} [{rec.risk_kind}] « {original} »"
-                f" — {rec.rationale}{basis}"
-            )
+            grouped.setdefault(rec.clause_id, []).append(rec)
+
+        for clause_id, recs in grouped.items():
+            quote = " ".join(str(recs[0].original).split())[:MAX_CLAUSE_QUOTE]
+            lines.append(f"- clause {clause_id} « {quote} »")
+            for rec in recs:
+                refs = ", ".join(
+                    r.article_ref for r in rec.legal_basis if r.article_ref
+                )
+                basis = (
+                    f" | extrait retrouve: {refs}" if refs else " | aucun extrait retrouve"
+                )
+                lines.append(f"    [{rec.risk_kind}] {rec.rationale}{basis}")
 
     obligations = list(report.obligations)[:MAX_OBLIGATIONS]
     if obligations:

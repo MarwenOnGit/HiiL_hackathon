@@ -175,7 +175,7 @@ class BannedPhrasing(unittest.TestCase):
             # string search is a proxy for.
             if (
                 "__pycache__" in str(path)
-                or path.name == "test_agents.py"
+                or path.name in ("test_agents.py", "test_llm.py")
                 or path.as_posix().endswith("core/grounding.py")
                 or "rag/corpus/" in path.as_posix()
             ):

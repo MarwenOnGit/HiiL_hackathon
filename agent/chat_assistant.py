@@ -6,11 +6,19 @@ Answers questions about a contract that the agents already built. Read only:
   re-parse a document), and
 - retrieved corpus chunks (invariant 7 — never invent a legal claim).
 
-There is no LLM backend on this hackathon build (see ``core/llm_client``), so
-the reply is a structured, neutral digest selected by question intent, plus
-whatever legal chunks retrieval returns. Where nothing is retrieved, the reply
-says so — a plausible-sounding COC article is the one failure this project
-must never ship.
+The digest is built deterministically: a structured, neutral summary selected
+by question intent, plus whatever legal chunks retrieval returns. Where nothing
+is retrieved, the reply says so — a plausible-sounding COC article is the one
+failure this project must never ship.
+
+When a model backend is configured (see ``core/llm_client``), that digest is
+handed to the narrator in ``narration.py``, which rewrites it as prose in the
+asker's language and is checked against the same retrieved chunks before the
+answer is used. The model is given that digest and nothing else — no clause
+text, since the digest is built from obligations and version lineage — so the
+worst it can do is phrase the same facts badly. If it is absent, rate-limited, or caught inventing an article, the
+deterministic digest is returned unchanged — which is why it is still built
+first, every time.
 
 The reply is deliberately written so it reads the same to both parties: same
 facts, same numbers, same caveats, no party-sided language (Agent 2 posture
@@ -67,7 +75,14 @@ class AssistantReply:
     citations: list[dict[str, str]] = field(default_factory=list)
     mode: str | None = None
     no_legal_basis_note: str | None = None
-    rule_based: bool = True  # always true while the LLM backend is absent
+    # False once a model has written the prose. The facts underneath are
+    # deterministic either way — this says who phrased them.
+    rule_based: bool = True
+    model: str | None = None
+    # Why the rule-based text is being shown when a backend was configured:
+    # no key, a rate limit, or a narrative discarded for citing a phantom
+    # article. Empty when nothing was attempted or the narrative was used.
+    narration_note: str = ""
 
     def as_dict(self) -> dict:
         return {
@@ -77,6 +92,8 @@ class AssistantReply:
             "mode": self.mode,
             "no_legal_basis_note": self.no_legal_basis_note,
             "rule_based": self.rule_based,
+            "model": self.model,
+            "narration_note": self.narration_note,
         }
 
 
@@ -183,6 +200,7 @@ def answer_question(
     contract: ContractObject,
     question: str,
     retriever: Retriever | None,
+    llm=None,
 ) -> AssistantReply:
     language = detect_language(question)
     names = _parties(contract)
@@ -221,6 +239,42 @@ def answer_question(
         if citations:
             mode = "normative+evaluative"
 
+    # The narrator gets the digest that was just built and the chunks that were
+    # just retrieved — never the contract, never its own memory of the law.
+    narrative = None
+    if llm is not None:
+        from narration import narrate
+        narrative = narrate(
+            llm,
+            agent="assistant",
+            language=language,
+            data=body,
+            citations=citations,
+            question=question,
+        )
+
+    if narrative is not None and narrative.available:
+        signature = (
+            "— Insaf assist · réponse rédigée par un modèle à partir de "
+            "l'analyse du contrat ; toute base légale citée est un extrait "
+            "retrouvé dans le corpus."
+            if narrative.language == "fr" else
+            "— Insaf assist · جواب حرّره نموذج انطلاقًا من تحليل العقد؛ كل أساس "
+            "قانوني مذكور هو مقتطف مُستخرَج من المدوّنة."
+        )
+        tail = [signature]
+        if missing_note:
+            tail.insert(0, missing_note)
+        return AssistantReply(
+            answer="\n\n".join([narrative.text, *tail]),
+            grounded_legal=grounded,
+            citations=citations,
+            mode=mode,
+            no_legal_basis_note=missing_note,
+            rule_based=False,
+            model=narrative.model,
+        )
+
     tail = [
         "— Insaf assist · rule-based reply (no language model on this build); "
         "every legal basis above is a retrieved corpus extract."
@@ -236,4 +290,5 @@ def answer_question(
         citations=citations,
         mode=mode,
         no_legal_basis_note=missing_note,
+        narration_note=(narrative.reason if narrative is not None else ""),
     )

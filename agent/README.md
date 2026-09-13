@@ -25,8 +25,44 @@ core/             foundation — imports no provider SDK, no agent module
   llm_client.py       the single seam every model call passes through
 ```
 
-Still to come: `blockchain_client/` (interface + in-memory fake), `rag/`,
-`hardening_agent/`, `resolution_agent/`, `config/`.
+All of `blockchain_client/`, `rag/`, `hardening_agent/`, `resolution_agent/`
+and `config/` now exist; see the model backend section below for the layer added
+on top of them.
+
+## The model backend
+
+Deterministic by default. Add a key and the agents additionally *narrate* their
+findings; remove it and they go back to rule-based output. Both are supported
+modes and `GET /health` says which one is live.
+
+```bash
+cp .env.example .env          # then paste an OpenRouter key into it
+# OPENROUTER_API_KEY=sk-or-...
+```
+
+Provider is OpenRouter (`config/llm.yaml`), model defaults to
+`deepseek/deepseek-chat` — cheap enough to call on every hardening run.
+Override with `OPENROUTER_MODEL`, or set `AGENT_LLM_ENABLED=0` to force
+deterministic mode with a key still present.
+
+The wiring, in one line each:
+
+```
+config/prompts.py      system prompts for both agents + the assistant, FR and AR
+core/llm_client.py     OpenRouterClient over stdlib urllib; NullLLMClient with no key
+core/grounding.py      rejects invented articles and forbidden phrasings
+narration.py           calls the model, runs the check, degrades with a stated reason
+*/narrative.py         each agent's digest of its own findings
+```
+
+**The model narrates; it never sources.** Everything it may say is already in
+the prompt: the structured digest and the retrieved excerpts. It does not see
+the document — only a bounded quote of the clauses that were flagged — and it
+runs *after* anchoring, so it cannot influence what was analysed, hashed or put
+on-chain. If it invents an article, the narrative is discarded whole rather than
+repaired, and the deterministic report underneath is returned unchanged. Every
+outcome is reported: `narrative.available` is false with a `reason`, so "no key"
+and "caught inventing an article" are distinguishable from the outside.
 
 ## The three things that are structural, not conventional
 

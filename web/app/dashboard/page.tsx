@@ -167,7 +167,7 @@ export default function DashboardPage() {
                     {r.consent_tier && <> · {t("dashboard.tier")} {esc(r.consent_tier)}</>}
                     {r.generated_at && <> · {fmtTime(r.generated_at)}</>}
                     {r.risk_counts && r.risk_counts.unenforceable > 0 && (
-                      <> · <span className="pill pill-danger">{r.risk_counts.unenforceable} {t("an.kindUnenforceable")}</span></>
+                      <> · <span className="pill pill-danger">{r.risk_counts.unenforceable} {r.risk_counts.unenforceable > 1 ? t("an.countUnenforceablePl") : t("an.countUnenforceable")}</span></>
                     )}
                     {typeof r.open_milestones === "number" && r.open_milestones > 0 && (
                       <> <span className="pill pill-warn">{t("ms.open", { n: r.open_milestones })}</span></>

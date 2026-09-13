@@ -321,7 +321,13 @@ function ThreadInner() {
                     <div key={m.obligation_id} className={"milestone-row " + stateClass}>
                       <div className="ms-top">
                         <span className="ms-kind">{label}</span>
-                        {m.due_date && <span className="ms-date">{fmtDate(m.due_date)}</span>}
+                        {m.due_date && (
+                          <span className="ms-date">
+                            {done
+                              ? t("ms.performedOn", { date: fmtDate(m.due_date) })
+                              : t("ms.dueOn", { date: fmtDate(m.due_date) })}
+                          </span>
+                        )}
                         {estimated && <span className="pill" style={{ fontSize: 11 }}>{t("thread.monitorEstimated")}</span>}
                         {m.alert === "due_soon" && (
                           <span className="pill pill-warn" style={{ fontSize: 11 }}>{t("thread.monitorDueSoon", { days: m.days_until ?? 0 })}</span>
