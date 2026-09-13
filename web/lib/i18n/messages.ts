@@ -68,16 +68,14 @@ export const messages = {
   "dashboard.statSigned": { fr: "Signés / exécutés", ar: "موقَّعة / منفَّذة" },
   "dashboard.statThreads": { fr: "Messages du fil", ar: "رسائل المحادثة" },
   "dashboard.analyse": { fr: "Nouveau contrat", ar: "عقد جديد" },
-  "dashboard.demoRel": { fr: "Générer une relation de démonstration", ar: "إنشاء علاقة تجريبية" },
-  "dashboard.generating": { fr: "Génération en cours…", ar: "جارٍ الإنشاء…" },
   "dashboard.sectionTitle": { fr: "Contrats", ar: "العقود" },
   "dashboard.sectionSub": {
     fr: "une identité de contrat · plusieurs versions · ajout seul",
     ar: "هوية عقد واحدة · عدة إصدارات · إضافة فقط"
   },
   "dashboard.empty": {
-    fr: "Rien ici pour l'instant. Générez une relation de démonstration ci-dessus, ou analysez un contrat que vous possédez.",
-    ar: "لا شيء بعد. أنشئ علاقة تجريبية أعلاه أو حلّل عقدًا تملكه."
+    fr: "Rien ici pour l'instant. Créez un contrat avec « Nouveau contrat » ci-dessus, ou déposez-y un contrat existant pour le faire analyser.",
+    ar: "لا شيء بعد. أنشئ عقدًا عبر «عقد جديد» أعلاه، أو أودِع عقدًا قائمًا لتحليله."
   },
   "dashboard.errLoad": { fr: "impossible de charger vos contrats", ar: "تعذّر تحميل عقودك" },
   "dashboard.msme": { fr: "MSME", ar: "المؤسسة" },
@@ -473,7 +471,6 @@ export const messages = {
   "err.network": { fr: "erreur réseau", ar: "خطأ في الشبكة" },
   "err.couldNotPost": { fr: "impossible d'envoyer", ar: "تعذّر الإرسال" },
   "err.assistantUnreachable": { fr: "l'assistant est injoignable", ar: "المساعد غير متاح" },
-  "err.genFailed": { fr: "génération échouée", ar: "فشل الإنشاء" },
   "err.demoFailed": { fr: "démo échouée", ar: "فشلت التجربة" },
   "err.acceptFailed": { fr: "échec de l'acceptation", ar: "تعذّر القبول" },
   "severity.critical": { fr: "critique", ar: "حرجة" },

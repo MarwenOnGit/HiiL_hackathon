@@ -35,7 +35,6 @@ export default function DashboardPage() {
   const [rows, setRows] = useState<Row[] | null>(null);
   const [chainMode, setChainMode] = useState("");
   const [unread, setUnread] = useState<Record<string, number>>({});
-  const [adding, setAdding] = useState(false);
   const [error, setError] = useState("");
   const [openInvite, setOpenInvite] = useState<string | null>(null);
 
@@ -68,40 +67,7 @@ export default function DashboardPage() {
     setUnread(counts);
   }, [router, t]);
 
-  async function generateDemo() {
-    setError("");
-    setAdding(true);
-    try {
-      const rel = await api<{ relationship?: { relationship_id?: string }; error?: string }>(
-        "/api/relationships/demo",
-        { method: "POST" }
-      );
-      if (!rel.ok || !rel.body.relationship?.relationship_id)
-        throw new Error(String(rel.body.error || t("err.demoFailed")));
-      const gen = await api<{ contract?: { contract_id?: string }; error?: string }>(
-        "/api/contracts/generate",
-        {
-          method: "POST",
-          body: JSON.stringify({ relationship_id: rel.body.relationship.relationship_id })
-        }
-      );
-      if (!gen.ok || !gen.body.contract?.contract_id)
-        throw new Error(String(gen.body.error || t("err.genFailed")));
-      const id = gen.body.contract.contract_id;
-      const created = await api<{ invite?: { invite_url: string }; contract_id?: string }>(
-        `/api/invites/${encodeURIComponent(id)}`,
-        { method: "POST" }
-      );
-      if (created.ok && created.body.invite) {
-        router.push(`/contracts/${encodeURIComponent(id)}?invited=1`);
-      } else {
-        router.push(`/contracts/${encodeURIComponent(id)}`);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t("err.genFailed"));
-      setAdding(false);
-    }
-  }
+
 
   const totalSigned = rows ? rows.filter((r) => r.signed).length : 0;
   const totalMsgs = rows ? rows.reduce((n, r) => n + r.thread_message_count, 0) : 0;
@@ -137,9 +103,6 @@ export default function DashboardPage() {
           <Link href="/harden" className="btn btn-primary">
             {t("dashboard.analyse")}
           </Link>
-          <button className="btn btn-warm" onClick={generateDemo} disabled={adding}>
-            {adding ? t("dashboard.generating") : t("dashboard.demoRel")}
-          </button>
         </div>
 
         {error && <div className="banner banner-danger">{error}</div>}
