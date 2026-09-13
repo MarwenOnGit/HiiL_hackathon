@@ -296,3 +296,10 @@ not prove the article governs it. The UI shows which words matched so a reader c
 dismiss a coincidence rather than trust a confident-looking citation. Overstating
 retrieval as verified authority would breach invariant 7 just as surely as generating
 the article would.
+
+**21. The fake chain persists to `agent/data/chain.json`.** The contract store was on
+disk while the ledger was memory-only, so restarting the agent service left stored
+contracts pointing at anchors that no longer existed and verification failed for data
+that was perfectly intact. A real chain survives a restart; a fake that does not
+misrepresents the thing it stands in for. Writes are atomic, and `/admin/reset` clears
+it.

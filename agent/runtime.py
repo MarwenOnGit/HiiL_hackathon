@@ -53,7 +53,7 @@ class Runtime:
     def __init__(self) -> None:
         DATA_DIR.mkdir(parents=True, exist_ok=True)
         self.store = JsonFileStore(DATA_DIR)
-        self.chain = InMemoryChain()
+        self.chain = InMemoryChain(persist_path=DATA_DIR / "chain.json")
         self.index = build_index()
         self.corpus_counts = load_corpus(self.index)
         self.retriever = Retriever(self.index)
@@ -66,7 +66,7 @@ class Runtime:
     def reset(self) -> None:
         for path in DATA_DIR.glob("*.json"):
             path.unlink()
-        self.chain = InMemoryChain()
+        self.chain = InMemoryChain(persist_path=DATA_DIR / "chain.json")
         self.resolver = ContractResolver(self.chain, self.store)
 
 

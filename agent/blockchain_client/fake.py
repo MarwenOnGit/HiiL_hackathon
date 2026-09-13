@@ -14,7 +14,11 @@ agent layer is not written against a convenience the real chain won't have.
 from __future__ import annotations
 
 import hashlib
+import json
+import os
+import tempfile
 from datetime import datetime, timezone
+from pathlib import Path
 
 from core.taxonomy import DocType
 
@@ -36,10 +40,18 @@ class InMemoryChain:
 
     mode = "fake"
 
-    def __init__(self) -> None:
+    def __init__(self, persist_path: str | Path | None = None) -> None:
         self._anchors: list[AnchorRecord] = []
         self._events: list[AttestationRecord] = []
         self._next_doc = 0
+        # The contract store is on disk while this ledger was memory-only, so a
+        # service restart left stored contracts pointing at anchors that no
+        # longer existed and verification failed for data that was perfectly
+        # intact. A real chain survives a restart; the fake has to as well, or
+        # it misrepresents the thing it stands in for.
+        self._path = Path(persist_path) if persist_path else None
+        if self._path and self._path.is_file():
+            self._load()
 
     # ---------- writes ----------
 
@@ -72,6 +84,7 @@ class InMemoryChain:
             metadata=clean_metadata,
         )
         self._anchors.append(record)
+        self._flush()
         return record
 
     def attest_event(
@@ -96,6 +109,7 @@ class InMemoryChain:
             timestamp=datetime.now(timezone.utc),
         )
         self._events.append(record)
+        self._flush()
         return record
 
     # ---------- reads ----------
@@ -126,6 +140,71 @@ class InMemoryChain:
 
     def _anchor(self, doc_id: str) -> AnchorRecord | None:
         return next((a for a in self._anchors if a.doc_id == doc_id), None)
+
+    # ---------- durability ----------
+
+    def _flush(self) -> None:
+        if not self._path:
+            return
+        payload = {
+            "next_doc": self._next_doc,
+            "anchors": [
+                {
+                    "doc_id": a.doc_id, "tx_hash": a.tx_hash,
+                    "document_hash": a.document_hash, "doc_type": str(a.doc_type),
+                    "parties": list(a.parties), "parent_doc_id": a.parent_doc_id,
+                    "timestamp": a.timestamp.isoformat(), "metadata": a.metadata,
+                }
+                for a in self._anchors
+            ],
+            "events": [
+                {
+                    "tx_hash": e.tx_hash, "contract_id": e.contract_id,
+                    "event_type": str(e.event_type), "payload_hash": e.payload_hash,
+                    "signer": e.signer, "timestamp": e.timestamp.isoformat(),
+                }
+                for e in self._events
+            ],
+        }
+        self._path.parent.mkdir(parents=True, exist_ok=True)
+        handle = tempfile.NamedTemporaryFile(
+            "w", encoding="utf-8", dir=self._path.parent, delete=False, suffix=".tmp"
+        )
+        try:
+            with handle as fh:
+                json.dump(payload, fh, ensure_ascii=False, indent=2)
+                fh.flush()
+                os.fsync(fh.fileno())
+            os.replace(handle.name, self._path)
+        except BaseException:
+            Path(handle.name).unlink(missing_ok=True)
+            raise
+
+    def _load(self) -> None:
+        raw = json.loads(self._path.read_text(encoding="utf-8"))
+        self._next_doc = raw.get("next_doc", 0)
+        self._anchors = [
+            AnchorRecord(
+                doc_id=a["doc_id"], tx_hash=a["tx_hash"],
+                document_hash=a["document_hash"], doc_type=DocType(a["doc_type"]),
+                parties=tuple(a["parties"]), parent_doc_id=a.get("parent_doc_id"),
+                timestamp=datetime.fromisoformat(a["timestamp"]),
+                metadata=a.get("metadata", {}),
+            )
+            for a in raw.get("anchors", [])
+        ]
+        self._events = [
+            AttestationRecord(
+                tx_hash=e["tx_hash"], contract_id=e["contract_id"],
+                event_type=EventType(e["event_type"]), payload_hash=e["payload_hash"],
+                signer=e["signer"], timestamp=datetime.fromisoformat(e["timestamp"]),
+            )
+            for e in raw.get("events", [])
+        ]
+
+    def clear(self) -> None:
+        self._anchors, self._events, self._next_doc = [], [], 0
+        self._flush()
 
     @staticmethod
     def _tx_hash(*parts: str) -> str:
