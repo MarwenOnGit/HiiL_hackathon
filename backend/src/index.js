@@ -4,17 +4,21 @@ const express = require("express");
 const cors = require("cors");
 
 const { createChainService } = require("./services/chainService");
+const { sessionMiddleware } = require("./services/sessionAuth");
 const relationshipsRouter = require("./routes/relationships");
 const contractsRouter = require("./routes/contracts");
 const dashboardRouter = require("./routes/dashboard");
 const confirmRouter = require("./routes/confirm");
 const agentRouter = require("./routes/agent");
 const threadsRouter = require("./routes/threads");
+const authRouter = require("./routes/auth");
+const invitesRouter = require("./routes/invites");
 const insaf = require("./services/insaf");
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(sessionMiddleware);
 
 app.locals.chainService = createChainService(process.env);
 
@@ -33,6 +37,9 @@ app.use("/api/confirm", confirmRouter);
 app.use("/api/threads", threadsRouter);
 // v3 analysis layer — proxied to the Python agent service (ARCHITECTURE.md §3)
 app.use("/api/agent", agentRouter);
+// v3 identity layer — email/password for MSME owners, invitation tokens for guests
+app.use("/api/auth", authRouter);
+app.use("/api/invites", invitesRouter);
 
 // Serve the static frontend (see ../../frontend) so the whole demo runs from
 // one process: `node src/index.js`, then open http://localhost:4000

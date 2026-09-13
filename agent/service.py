@@ -16,6 +16,7 @@ from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel
 
 from blockchain_client.client import ChainError
+from chat_assistant import answer_question
 from config import load_profile
 from core.schemas import Party
 from core.taxonomy import DocType, ReviewStatus
@@ -212,6 +213,20 @@ def get_contract(contract_id: str) -> dict[str, Any]:
         raise HTTPException(status_code=404, detail="unknown contract")
     contract = RUNTIME.store.get(contract_id)
     from core.version_manager import effective_to, status_of
+    obligations = [
+        {
+            "obligation_id": o.obligation_id,
+            "clause_id": o.clause_id,
+            "obligor": o.obligor,
+            "obligee": o.obligee,
+            "action": o.action,
+            "trigger": o.trigger,
+            "due_date": o.due_date.isoformat() if o.due_date else None,
+            "evidence_required": o.evidence_required,
+            "state": str(o.state),
+        }
+        for o in contract.obligations()
+    ]
     return {
         "contract_id": contract.contract_id,
         "parties": [
@@ -235,6 +250,8 @@ def get_contract(contract_id: str) -> dict[str, Any]:
             }
             for v in contract.versions
         ],
+        "obligations": obligations,
+        "obligation_count": len(obligations),
     }
 
 
@@ -327,3 +344,48 @@ def open_dispute(body: DisputeBody) -> dict[str, Any]:
 def reset() -> dict[str, Any]:
     RUNTIME.reset()
     return {"ok": True, "message": "store and chain cleared"}
+
+
+@app.get("/contracts")
+def list_contracts() -> dict[str, Any]:
+    """Inventory of everything the agent store knows. Powering the owner's
+    dashboard list without asking the store for a closed endpoint that would
+    need its own permissions story."""
+    out = []
+    for contract_id in RUNTIME.store.list_ids():
+        contract = RUNTIME.store.get(contract_id)
+        signed = any(v.doc_type is DocType.SIGNED and v.anchor_tx for v in contract.versions)
+        out.append({
+            "contract_id": contract.contract_id,
+            "parties": [
+                {"party_id": p.party_id, "role": p.role, "display_name": p.display_name}
+                for p in contract.parties
+            ],
+            "signed": signed,
+            "version_count": len(contract.versions),
+            "clause_count": (
+                len(contract.versions[-1].clauses) if contract.versions else 0
+            ),
+        })
+    return {"contracts": out, "count": len(out)}
+
+
+class AskBody(BaseModel):
+    contract_id: str
+    question: str
+
+
+@app.post("/ask")
+def ask_contract(body: AskBody) -> dict[str, Any]:
+    """The in-chat assistant. Grounded on the contract object the agents built
+    and on retrieval — never on invented law."""
+    if not body.question or not body.question.strip():
+        raise HTTPException(status_code=400, detail="question is required")
+    if not RUNTIME.store.exists(body.contract_id):
+        raise HTTPException(status_code=404, detail="unknown contract")
+    contract = RUNTIME.store.get(body.contract_id)
+    reply = answer_question(contract, body.question, RUNTIME.retriever)
+    return {
+        "contract_id": body.contract_id,
+        "reply": reply.as_dict(),
+    }

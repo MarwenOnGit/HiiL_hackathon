@@ -13,6 +13,10 @@ router.post("/generate", (req, res) => {
 
   const contract = generateContract(relationship);
   db.saveContract(contract);
+  // A signed-in MSME owner keeps the contract they created (v3 ownership).
+  if (req.auth && req.auth.kind === "msme") {
+    db.saveContractOwner(contract.contract_id, req.auth.user.user_id, "wizard");
+  }
   res.json({ contract, insaf: insaf.onGenerated() });
 });
 
@@ -33,7 +37,10 @@ router.post("/:id/anchor", (req, res) => {
   const existing = confirmationTokens.findActiveByContract(contract.contract_id);
   const { token, otp_code, expires_at } = existing || confirmationTokens.createConfirmation(contract.contract_id);
   const baseUrl = process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get("host")}`;
-  const confirm_url = `${baseUrl}/confirm.html?token=${token}`;
+  // The guest-facing side moved from static confirm.html to the v3 dashboard's
+  // /invite page (token-only — the token in the link is the party's identity).
+  // confirm_url kept for the legacy wizard renderer (app.js) — same value.
+  const confirm_url = `${baseUrl}/invite?token=${token}`;
 
   res.json({
     confirmation: { token, otp_code, expires_at, confirm_url },

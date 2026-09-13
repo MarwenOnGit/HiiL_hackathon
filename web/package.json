@@ -1,0 +1,24 @@
+{
+  "name": "insaf-dashboard",
+  "version": "0.3.0",
+  "private": true,
+  "description": "Insaf v3 — the one-and-only dashboard (auth, hardening, threads, in-chat assistant)",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "ethers": "^6.17.0",
+    "next": "^15.3.3",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "typescript": "^5.8.3"
+  }
+}
