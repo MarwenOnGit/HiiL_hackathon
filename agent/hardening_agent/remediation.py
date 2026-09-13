@@ -1,9 +1,15 @@
-"""Redlines: what to change, why, and on what authority.
+"""Recommendations: an anomaly, why it matters, and authority — never a change.
 
-Every redline carries four things — original, proposed, rationale, and legal
-basis. The fourth is the one that matters. It is populated *only* from
-retrieved chunks, and when retrieval comes back empty the redline still ships
-but carries an explicit `NoLegalBasis` instead.
+Agent 1 does anomaly detection, not editing. The AI never alters the contract:
+every finding is advisory, carries `applied=False`, and the proposed wording is
+a drafting suggestion the user may take or leave — it is never written into a
+version of the contract.
+
+Every recommendation carries five things — the clause, the anomaly, a drafting
+path, the rationale, and the legal basis. The legal basis is the one that
+matters. It is populated *only* from retrieved chunks, and when retrieval comes
+back empty the recommendation still ships but carries an explicit
+`NoLegalBasis` instead.
 
 That distinction is the product's integrity: "here is a drafting improvement"
 and "here is what the law requires" are different claims, and this module never
@@ -24,7 +30,7 @@ from .risk_scorer import Finding
 
 
 @dataclass
-class Redline:
+class Recommendation:
     clause_id: str
     original: str
     proposed: str
@@ -37,6 +43,9 @@ class Redline:
     # kinds of claim.
     verified_pin: bool = False
     no_legal_basis: NoLegalBasis | None = None
+    # Always False by construction: the AI never alters the contract. Surfaced
+    # so no consumer can mistake a recommendation for an applied change.
+    applied: bool = False
 
     @property
     def grounded(self) -> bool:
@@ -49,6 +58,9 @@ class Redline:
             "proposed": self.proposed,
             "rationale": self.rationale,
             "risk_kind": str(self.risk_kind),
+            # The only value the pipeline ever emits. Nothing in this module
+            # mutates the contract; "applied" would take a human editor.
+            "applied": self.applied,
             "grounded": self.grounded,
             "legal_basis": [
                 {
@@ -84,19 +96,19 @@ class Redline:
         }
 
 
-def propose_redlines(
+def propose_recommendations(
     clause: Clause,
     findings: list[Finding],
     retriever: Retriever,
     profile: dict[str, Any],
-) -> tuple[list[Redline], list[RiskFlag]]:
-    """Redlines for one clause, plus any flags upgraded by retrieval.
+) -> tuple[list[Recommendation], list[RiskFlag]]:
+    """Recommendations for one clause, plus any flags upgraded by retrieval.
 
     Returns flags separately because a retrieved provision can turn an
     observation into an `unenforceable` finding — and that flag type refuses to
     exist without the citation that justifies it.
     """
-    redlines: list[Redline] = []
+    recommendations: list[Recommendation] = []
     extra_flags: list[RiskFlag] = []
 
     for finding in findings:
@@ -131,7 +143,7 @@ def propose_redlines(
         rationale = finding.flag.detail
 
         if result.grounded:
-            redlines.append(Redline(
+            recommendations.append(Recommendation(
                 clause_id=clause.clause_id,
                 original=clause.text.strip()[:800],
                 proposed=proposed,
@@ -142,7 +154,7 @@ def propose_redlines(
                 verified_pin=pinned is not None,
             ))
         else:
-            redlines.append(Redline(
+            recommendations.append(Recommendation(
                 clause_id=clause.clause_id,
                 original=clause.text.strip()[:800],
                 proposed=proposed,
@@ -151,7 +163,7 @@ def propose_redlines(
                 no_legal_basis=result.empty,
             ))
 
-    return redlines, extra_flags
+    return recommendations, extra_flags
 
 
 def _label_for(clause_type: str, profile: dict[str, Any]) -> str:

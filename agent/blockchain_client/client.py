@@ -47,6 +47,10 @@ class EventType(StrEnum):
 
     OBLIGATION_PERFORMED = "obligation_performed"
     OBLIGATION_BREACHED = "obligation_breached"
+    # The audit of an uploaded document is an anchored fact in its own right:
+    # the payload hash is the fingerprint of what the analysis found, so nobody
+    # can later relitigate "what did the tool actually flag on that date".
+    ANALYSIS_COMPLETED = "analysis_completed"
     DISPUTE_OPENED = "dispute_opened"
     DISPUTE_RESOLVED = "dispute_resolved"
     DISPUTE_ESCALATED = "dispute_escalated"

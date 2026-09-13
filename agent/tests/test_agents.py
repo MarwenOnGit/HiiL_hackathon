@@ -106,12 +106,12 @@ class NeverFabricateLaw(unittest.TestCase):
                      "silently fall back to lexical search",
             )
 
-    def test_every_redline_is_ungrounded_when_the_corpus_is_empty(self):
+    def test_every_recommendation_is_ungrounded_when_the_corpus_is_empty(self):
         report = run_hardening()
-        self.assertGreater(len(report.redlines), 0)
-        for redline in report.redlines:
-            self.assertEqual(redline.legal_basis, [])
-            self.assertIsNotNone(redline.no_legal_basis)
+        self.assertGreater(len(report.recommendations), 0)
+        for recommendation in report.recommendations:
+            self.assertEqual(recommendation.legal_basis, [])
+            self.assertIsNotNone(recommendation.no_legal_basis)
         self.assertTrue(report.as_dict()["grounding"]["all_ungrounded"])
 
     def test_the_empty_result_says_why(self):
@@ -264,11 +264,12 @@ class Agent1Hardening(unittest.TestCase):
 
     def test_asymmetry_is_flagged_but_never_auto_rewritten(self):
         asym = [
-            r for r in self.data["redlines"] if r["risk_kind"] == "asymmetric"
+            r for r in self.data["recommendations"] if r["risk_kind"] == "asymmetric"
         ]
         self.assertTrue(asym)
-        for redline in asym:
-            self.assertIn("information", redline["proposed"].lower())
+        for recommendation in asym:
+            self.assertFalse(recommendation["applied"])
+            self.assertIn("information", recommendation["proposed"].lower())
 
     def test_the_payment_obligation_belongs_to_the_buyer(self):
         """'paiement a 30 jours a compter de la livraison' once made the
@@ -292,6 +293,24 @@ class Agent1Hardening(unittest.TestCase):
         self.assertEqual([c["type"] for c in self.data["clauses"]],
                          [c["type"] for c in again["clauses"]])
         self.assertEqual(self.data["text_hash"], again["text_hash"])
+
+    def test_the_analysis_is_attested_on_chain_with_a_fingerprint(self):
+        """After analysis the contract has two on-chain facts: the original
+        anchor and the audit itself. Only a hash of the findings rides along."""
+        chain = InMemoryChain()
+        report = run_hardening(chain=chain)
+        data = report.as_dict()
+        self.assertTrue(data["analysis_anchor"]["attested"])
+        self.assertTrue(data["analysis_anchor"]["tx_hash"].startswith("0x"))
+        self.assertTrue(data["analysis_anchor"]["findings_hash"].startswith("0x"))
+        self.assertEqual(data["analysis_anchor"]["total"], len(report.recommendations))
+        from blockchain_client.client import EventType
+        events = [e for e in chain.fetch_history("c1")
+                  if type(e).__name__ == "AttestationRecord"]
+        self.assertEqual(len(events), 1)
+        self.assertIs(events[0].event_type, EventType.ANALYSIS_COMPLETED)
+        self.assertEqual(events[0].payload_hash,
+                         data["analysis_anchor"]["findings_hash"])
 
 
 class IngestEngines(unittest.TestCase):

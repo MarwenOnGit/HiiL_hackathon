@@ -4,7 +4,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { getMe, logout, type Me } from "@/lib/api";
+import { useI18n } from "@/lib/i18n";
 import ThemeToggle from "./ThemeToggle";
+import LangToggle from "./LangToggle";
 
 export function InsafMark({ size = 30 }: { size?: number }) {
   return (
@@ -21,6 +23,7 @@ export function InsafMark({ size = 30 }: { size?: number }) {
 export default function TopBar() {
   const router = useRouter();
   const [me, setMe] = useState<Me | null>(null);
+  const { t } = useI18n();
 
   useEffect(() => {
     getMe().then(setMe);
@@ -40,7 +43,7 @@ export default function TopBar() {
         <InsafMark />
         <span className="brand-text">
           <strong>Insaf</strong>
-          <span>إنصاف · commercial justice for MSMEs</span>
+          <span>{t("topbar.tagline")}</span>
         </span>
       </Link>
 
@@ -54,12 +57,13 @@ export default function TopBar() {
             </span>
             <span>
               {me.user.name}
-              {me.user.is_demo ? <span className="pill pill-warm" style={{ marginLeft: 8 }}>demo</span> : null}
+              {me.user.is_demo ? <span className="pill pill-warm" style={{ marginInlineStart: 8 }}>{t("common.demo")}</span> : null}
             </span>
           </span>
+          <LangToggle />
           <ThemeToggle />
           <button className="btn btn-sm" onClick={onLogout}>
-            Sign out
+            {t("topbar.signout")}
           </button>
         </>
       )}

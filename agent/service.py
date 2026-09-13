@@ -13,17 +13,18 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from blockchain_client.client import ChainError
 from chat_assistant import answer_question
 from config import load_profile
 from core.hashing import content_hash
 from core.identity import IDENTITY_MODEL, derive_pseudonym
-from core.schemas import Party
+from core.schemas import Party, LegalIdentity
 from core.taxonomy import DocType, ReviewStatus
 from core.version_manager import add_version
 from hardening_agent import harden
+from hardening_agent.builder import BuildError, build_contract_text, buyer_and_supplier, essentials_meta
 from hardening_agent.ingest import get_engine
 from resolution_agent import resolve
 from resolution_agent.dispute_intake import NoGoverningVersion
@@ -110,43 +111,156 @@ class AcceptBody(BaseModel):
     lawyer_validated: bool = False
 
 
-@app.post("/contracts/{contract_id}/accept")
-def accept_redlines(contract_id: str, body: AcceptBody) -> dict[str, Any]:
-    """The human gate. Accepting redlines is a human act (invariant 4).
+class IdentityIn(BaseModel):
+    person_type: str = "physique"
+    given_name: str = ""
+    family_name: str = ""
+    address: str = ""
+    cin: str | None = None
+    legal_form: str | None = None
+    matricule: str | None = None
 
-    Produces a hardened PROPOSAL — deliberately not anchored, because a
-    proposal is not a fact.
+
+class PartyIn(BaseModel):
+    role: str
+    display_name: str = ""
+    identity: IdentityIn | None = None
+
+
+class EssentialsIn(BaseModel):
+    objet_possible: str = ""
+    objet_specifique: str = ""
+    objet_quantite: str = ""
+    objet_valorisation: str = ""
+    capacite: str = ""
+    consentement: str = ""
+    cause: str = ""
+
+
+class UserClauseIn(BaseModel):
+    title: str = ""
+    text: str = ""
+
+
+class BuildBody(BaseModel):
+    contract_id: str
+    language: str = "fr"
+    profile: str = "supply"
+    parties: list[PartyIn] = []
+    essentials: EssentialsIn = Field(default_factory=EssentialsIn)
+    clauses: list[UserClauseIn] = []
+    effective_from: str | None = None
+
+
+def _to_legal_identity(identity: IdentityIn | None) -> LegalIdentity | None:
+    if identity is None:
+        return None
+    return LegalIdentity(
+        person_type=identity.person_type,
+        given_name=identity.given_name,
+        family_name=identity.family_name,
+        address=identity.address,
+        cin=identity.cin,
+        legal_form=identity.legal_form,
+        matricule=identity.matricule,
+    )
+
+
+def _steered_party(party: PartyIn, role: str, party_id: str) -> Party:
+    identity = _to_legal_identity(party.identity)
+    display_name = (party.display_name or "").strip() or (
+        identity.full_name if identity else ""
+    ) or "Partie"
+    return Party(
+        party_id=party_id,
+        role=role,
+        display_name=display_name,
+        pseudonym=derive_pseudonym(party_id),
+        identity=identity,
+    )
+
+
+@app.post("/contracts/build")
+def build_contract(body: BuildBody) -> dict[str, Any]:
+    """The structured builder: compose a contract from user-entered fields,
+    then run the anomaly-detection pipeline on it — same gaps, same
+    recommendations, same obligations as for an uploaded document. Findings
+    never alter the composed document."""
+    if not body.contract_id:
+        raise HTTPException(status_code=400, detail="contract_id is required")
+    if len(body.parties) < 2:
+        raise HTTPException(status_code=400, detail="provide the two parties (buyer and supplier)")
+
+    buyer_in, supplier_in = buyer_and_supplier(
+        [p.model_dump() for p in body.parties]
+    )
+    buyer = PartyIn(**buyer_in)
+    supplier = PartyIn(**supplier_in)
+
+    essentials = body.essentials.model_dump()
+    try:
+        document = build_contract_text(
+            language=body.language,
+            parties=[p.model_dump() for p in body.parties],
+            essentials=essentials,
+            clauses=[c.model_dump() for c in body.clauses],
+        )
+    except BuildError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    parties = [
+        _steered_party(buyer, "msme_owner", "p_buyer"),
+        _steered_party(supplier, "counterparty", "p_supplier"),
+    ]
+
+    report = harden(
+        text=document,
+        contract_id=body.contract_id,
+        parties=parties,
+        profile=load_profile(body.profile),
+        retriever=RUNTIME.retriever,
+        chain=RUNTIME.chain,
+        store=RUNTIME.store,
+        effective_from=_parse_when(body.effective_from),
+        metadata={"essentials": essentials_meta(essentials)},
+    )
+    return {
+        "report": report.as_dict(),
+        "built_text": document,
+        "parties": [
+            {"party_id": p.party_id, "role": p.role, "display_name": p.display_name}
+            for p in parties
+        ],
+    }
+
+
+@app.post("/contracts/{contract_id}/accept")
+def acknowledge_report(contract_id: str, body: AcceptBody) -> dict[str, Any]:
+    """Human acknowledgment of the findings. Nothing is written.
+
+    Agent 1 does anomaly detection — it never alters the contract. This
+    endpoint records that a human read the report and chose to move on as-is.
+    No version is created, nothing is anchored, and no text changes: signing
+    below concerns the contract exactly as filed.
     """
     if not RUNTIME.store.exists(contract_id):
         raise HTTPException(status_code=404, detail="unknown contract")
     contract = RUNTIME.store.get(contract_id)
     latest = contract.versions[-1]
-
-    import copy
-    clauses = [copy.deepcopy(c) for c in latest.clauses]  # same clause_ids, by design
-    hardened = add_version(
-        contract,
-        doc_type=DocType.HARDENED,
-        text_hash=latest.text_hash,
-        clauses=clauses,
-        parent_version_id=latest.version_id,
-        review_status=(
-            ReviewStatus.LAWYER_VALIDATED if body.lawyer_validated
-            else ReviewStatus.PARTY_ACCEPTED
-        ),
-    )
-    RUNTIME.store.save(contract)
     return {
-        "version_id": hardened.version_id,
-        "parent_version_id": hardened.parent_version_id,
-        "doc_type": str(hardened.doc_type),
-        "status": str(hardened.status),
-        "review_status": str(hardened.review_status),
+        "acknowledged": True,
+        "version_id": latest.version_id,
+        "parent_version_id": latest.parent_version_id,
+        "doc_type": str(latest.doc_type),
+        # The property that defines this behaviour: the AI applied nothing.
+        "version_created": False,
+        "applied": False,
         "accepted_clause_ids": body.accepted_clause_ids,
         "anchored": False,
         "note": (
-            "Proposition enregistrée, non ancrée : une proposition n'est pas "
-            "un fait. L'ancrage intervient à la signature."
+            "Accusé de réception enregistré. L'IA ne modifie jamais le contrat : "
+            "aucune version n'a été créée et aucun texte n'a changé. La signature "
+            "portera sur le contrat tel qu'il a été déposé."
         ),
     }
 
@@ -188,17 +302,23 @@ def sign(contract_id: str, body: SignBody) -> dict[str, Any]:
             else ReviewStatus.PARTY_ACCEPTED
         ),
     )
-    # The off-chain parent is v2 (the hardened proposal), but v2 was
-    # deliberately never anchored — "a proposal is not a fact" — so it has no
-    # doc_id to point at. On-chain the link must therefore reach the nearest
-    # ANCHORED ancestor, which is the original. Off-chain lineage and on-chain
-    # provenance are both complete; they just have different granularity.
+    # The signed version carries the contract exactly as filed: the AI applied
+    # nothing, so the parent is the original. If a human has since edited the
+    # contract, the parent is that human-edited version instead — in all cases
+    # the off-chain parent is whatever version was in force. On-chain the link
+    # points at the nearest ANCHORED ancestor; a human-edited proposal that was
+    # never signed is deliberately unanchored and so has no doc_id (off-chain
+    # lineage and on-chain provenance are both complete; different granularity).
     previous = RUNTIME.chain.fetch_latest_anchor(contract_id)
+    metadata = {"contract_id": contract_id}
+    # The signed commitment references the audit it was signed against.
+    if contract.metadata.get("analysis_fingerprint"):
+        metadata["analysis_fingerprint"] = contract.metadata["analysis_fingerprint"]
     record = RUNTIME.chain.anchor_document(
         text_hash, DocType.SIGNED,
         [p.pseudonym for p in contract.parties],
         parent_doc_id=previous.doc_id if previous else None,
-        metadata={"contract_id": contract_id},
+        metadata=metadata,
     )
     signed.anchor_tx = record.tx_hash
     RUNTIME.store.save(contract)
@@ -274,7 +394,8 @@ def history(contract_id: str) -> dict[str, Any]:
                     {"doc_id": item.doc_id, "doc_type": str(item.doc_type),
                      "parent_doc_id": item.parent_doc_id}
                     if type(item).__name__ == "AnchorRecord"
-                    else {"event_type": str(item.event_type), "signer": item.signer}
+                    else {"event_type": str(item.event_type), "signer": item.signer,
+                          "payload_hash": item.payload_hash}
                 ),
             }
             for item in items

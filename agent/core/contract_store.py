@@ -92,7 +92,19 @@ class JsonFileStore:
             raise
 
     def list_ids(self) -> list[str]:
-        return sorted(p.stem for p in self.root.glob("*.json"))
+        # The store root also holds chain.json (the fake chain's persistence
+        # file, anchored at agent/data/chain.json by design). Never treat a
+        # non-contract file as a stored contract: only JSON records carrying a
+        # contract_id belong to this store.
+        out = []
+        for p in self.root.glob("*.json"):
+            try:
+                doc = json.loads(p.read_text(encoding="utf-8"))
+            except Exception:
+                continue
+            if isinstance(doc, dict) and doc.get("contract_id"):
+                out.append(p.stem)
+        return sorted(out)
 
     @staticmethod
     def _assert_append_only(stored: ContractObject, incoming: ContractObject) -> None:

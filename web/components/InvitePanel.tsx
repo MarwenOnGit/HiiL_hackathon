@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { api, esc, fmtDate } from "@/lib/api";
+import { useI18n } from "@/lib/i18n";
 
 interface Invite {
   token: string;
@@ -11,6 +12,7 @@ interface Invite {
 }
 
 export default function InvitePanel({ contractId }: { contractId: string }) {
+  const { t } = useI18n();
   const [invite, setInvite] = useState<Invite | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -25,7 +27,7 @@ export default function InvitePanel({ contractId }: { contractId: string }) {
         { method: "POST" }
       );
       if (!ok || !body.invite) {
-        setError(String(body.error || "could not create an invitation"));
+        setError(String(body.error || t("ipanel.errCreate")));
         return;
       }
       setInvite(body.invite);
@@ -44,7 +46,7 @@ export default function InvitePanel({ contractId }: { contractId: string }) {
     return (
       <div>
         <button className="btn btn-sm" onClick={load} disabled={busy}>
-          {busy ? "Creating…" : "Create invitation"}
+          {busy ? t("ipanel.creating") : t("ipanel.create")}
         </button>
         {error && <div className="banner banner-danger">{error}</div>}
       </div>
@@ -53,33 +55,30 @@ export default function InvitePanel({ contractId }: { contractId: string }) {
 
   return (
     <div className="card" style={{ marginTop: 10 }}>
-      <h3>Invite your counterparty</h3>
+      <h3>{t("ipanel.title")}</h3>
       <p className="muted" style={{ marginTop: 0, fontSize: 13 }}>
-        Send this link <em>and</em> code to the other party by your own channel.
-        Expires {fmtDate(invite.expires_at)}.
+        {t("ipanel.desc", { date: fmtDate(invite.expires_at) })}
       </p>
       <div className="field">
-        <label>Invitation link</label>
+        <label>{t("ipanel.link")}</label>
         <div style={{ display: "flex", gap: 8 }}>
           <input className="input" readOnly value={invite.invite_url} />
           <button className="btn btn-sm" onClick={() => copy(invite.invite_url)}>
-            {copied === invite.invite_url ? "Copied" : "Copy"}
+            {copied === invite.invite_url ? t("ipanel.copied") : t("ipanel.copy")}
           </button>
         </div>
       </div>
       <div className="field" style={{ maxWidth: 220 }}>
-        <label>Confirmation code (share separately)</label>
+        <label>{t("ipanel.code")}</label>
         <div style={{ display: "flex", gap: 8 }}>
           <input className="input mono" readOnly value={invite.otp_code} />
           <button className="btn btn-sm" onClick={() => copy(invite.otp_code)}>
-            {copied === invite.otp_code ? "Copied" : "Copy"}
+            {copied === invite.otp_code ? t("ipanel.copied") : t("ipanel.copy")}
           </button>
         </div>
       </div>
       <p className="muted" style={{ fontSize: 12, marginBottom: 0 }}>
-        The thread for this contract opens to the invited party once the
-        agreement is signed. One invitation per contract — reusing the link is
-        fine.
+        {t("ipanel.note")}
       </p>
     </div>
   );

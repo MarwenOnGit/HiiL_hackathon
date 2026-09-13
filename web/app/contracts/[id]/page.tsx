@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api, esc, fmtDate, fmtTime, getMe } from "@/lib/api";
+import { useI18n, type MsgKey } from "@/lib/i18n";
 import TopBar from "@/components/TopBar";
 import InvitePanel from "@/components/InvitePanel";
 
@@ -20,9 +21,36 @@ interface Row {
 
 interface Ob { obligation_id: string; clause_id: string; obligor: string; obligee: string; action: string; trigger: string; due_date: string | null; evidence_required?: string; state: string }
 
+const STATE_KEYS: Record<string, MsgKey> = {
+  pending: "state.pending",
+  overdue_unconfirmed: "state.overdue_unconfirmed",
+  performed: "state.performed",
+  breached: "state.breached",
+  waived: "state.waived",
+  cured: "state.cured"
+};
+
+const EVENT_LABELS: Record<string, MsgKey> = {
+  analysis_completed: "events.analysis"
+};
+
+const DOCTYPE_KEYS: Record<string, MsgKey> = {
+  original: "doctype.original",
+  hardened: "doctype.hardened",
+  signed: "doctype.signed",
+  amendment: "doctype.amendment"
+};
+
+const STATUS_KEYS: Record<string, MsgKey> = {
+  in_force: "status.in_force",
+  proposed: "status.proposed",
+  superseded: "status.superseded"
+};
+
 export default function ContractDetailPage() {
   const params = useParams<{ id: string }>();
   const contractId = params.id;
+  const { t } = useI18n();
 
   const [row, setRow] = useState<Row | null>(null);
   const [notFound, setNotFound] = useState("");
@@ -46,7 +74,7 @@ export default function ContractDetailPage() {
       if (!mine.ok) return;
       const found = mine.body.rows.find((r) => r.contract_id === contractId);
       if (!found) {
-        setNotFound("You're not the owner of this contract, or it no longer exists.");
+        setNotFound(t("detail.notYours"));
         return;
       }
       setRow(found);
@@ -64,7 +92,7 @@ export default function ContractDetailPage() {
         if (h.ok) setHistory(h.body.entries || []);
       }
     })();
-  }, [contractId]);
+  }, [contractId, t]);
 
   if (notFound) {
     return (
@@ -72,9 +100,9 @@ export default function ContractDetailPage() {
         <TopBar />
         <main className="main main-narrow">
           <div className="banner banner-warn">
-            <strong>Not your contract.</strong> {esc(notFound)}
+            <strong>{t("detail.notYours")}</strong> {esc(notFound)}
           </div>
-          <Link className="btn" href="/dashboard">← Dashboard</Link>
+          <Link className="btn" href="/dashboard">{t("detail.dashboard")}</Link>
         </main>
       </div>
     );
@@ -84,28 +112,36 @@ export default function ContractDetailPage() {
     <div className="app">
       <TopBar />
       <main className="main">
-        <Link href="/dashboard" className="muted" style={{ fontSize: 13 }}>← Dashboard</Link>
+        <Link href="/dashboard" className="muted" style={{ fontSize: 13 }}>
+          <span className="rtl-flip">←</span> {t("detail.dashboard")}
+        </Link>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginTop: 6 }}>
           <h1 style={{ fontSize: 22, margin: 0 }}>
-            {row ? `${esc(row.msme_owner || "MSME")} → ${esc(row.counterparty || "Counterparty")}` : contractId}
+            {row ? `${esc(row.msme_owner || t("dashboard.msme"))} → ${esc(row.counterparty || t("dashboard.counterparty"))}` : contractId}
           </h1>
           {row && (
             <>
               <span className="hash-tag">{row.contract_id}</span>
-              <span className="pill pill-accent">{row.source}</span>
-              {row.signed ? <span className="pill pill-ok">signed</span> : <span className="pill pill-warn">draft</span>}
-              {row.consent_tier && <span className="pill">tier {esc(row.consent_tier)}</span>}
+              <span className="pill pill-accent">{row.source === "wizard" ? t("common.wizard") : t("common.hardened")}</span>
+              {row.source === "hardened" ? (
+                <span className="pill pill-ok">{t("common.anchored")}</span>
+              ) : row.signed ? (
+                <span className="pill pill-ok">{t("common.signed")}</span>
+              ) : (
+                <span className="pill pill-warn">{t("common.draft")}</span>
+              )}
+              {row.consent_tier && <span className="pill">{t("dashboard.tier")} {esc(row.consent_tier)}</span>}
             </>
           )}
         </div>
 
-        {!row && !notFound && <p className="muted">Loading…</p>}
+        {!row && !notFound && <p className="muted">{t("common.loading")}</p>}
 
         {invited && (
-          <div className="banner banner-ok">An invitation was created — share the link and code with the other party.</div>
+          <div className="banner banner-ok">{t("detail.invitationCreated")}</div>
         )}
 
-        {row && longRow(row, wizard, versions, history, obligations, contractId)}
+        {row && longRow(row, wizard, versions, history, obligations, contractId, t)}
       </main>
     </div>
   );
@@ -117,34 +153,48 @@ function longRow(
   versions: any[] | null,
   history: any[] | null,
   obligations: Ob[] | null,
-  contractId: string
+  contractId: string,
+  t: (key: MsgKey, vars?: Record<string, string | number>) => string
 ) {
+  const docTypeLabel = (docType: string) => {
+    const key = DOCTYPE_KEYS[docType];
+    return key ? t(key) : docType;
+  };
+  const statusLabel = (status: string) => {
+    const key = STATUS_KEYS[status];
+    return key ? t(key) : status;
+  };
+  const stateLabel = (state: string) => {
+    const key = STATE_KEYS[state];
+    return key ? t(key) : state;
+  };
+
   return (
     <>
       <div className="grid-stats" style={{ marginTop: 14 }}>
-        <div className="stat"><div className="stat-num">{row.version_count}</div><div className="stat-label">Versions</div></div>
-        <div className="stat"><div className="stat-num">{row.signed ? "✓" : "—"}</div><div className="stat-label">Executed on-chain</div></div>
-        <div className="stat"><div className="stat-num">{obligations ? obligations.length : "—"}</div><div className="stat-label">Obligations</div></div>
+        <div className="stat"><div className="stat-num">{row.version_count}</div><div className="stat-label">{t("detail.statVersions")}</div></div>
+        <div className="stat"><div className="stat-num">{row.signed ? "✓" : "—"}</div><div className="stat-label">{t("detail.statExecuted")}</div></div>
+        <div className="stat"><div className="stat-num">{obligations ? obligations.length : "—"}</div><div className="stat-label">{t("detail.statObligations")}</div></div>
       </div>
 
       {wizard && (
         <>
           <div className="card" style={{ marginTop: 14 }}>
-            <h3>Contract (wizard v1)</h3>
-            <pre style={{ whiteSpace: "pre-wrap", fontSize: 13, background: "var(--surface-alt)", padding: 14, borderRadius: 12 }}>{wizard.contract.contract_text}</pre>
+            <h3>{t("detail.contractWizard")}</h3>
+            <pre style={{ whiteSpace: "pre-wrap", fontSize: 13, background: "var(--surface-alt)", padding: 14, borderRadius: 12, direction: "ltr" }}>{wizard.contract.contract_text}</pre>
             <p className="muted" style={{ fontSize: 12 }}>
-              Hash <span className="hash-tag">{esc(wizard.contract.contract_text_hash)}</span>
+              {t("detail.hash")} <span className="hash-tag">{esc(wizard.contract.contract_text_hash)}</span>
             </p>
           </div>
           {wizard.onchain && (
             <div className="card" style={{ marginTop: 12 }}>
-              <h3>On-chain record</h3>
-              <div className="row"><span className="pill">agreement</span><div className="row-main"><span className="hash-tag">{esc(wizard.onchain.agreement_onchain_id)}</span></div></div>
+              <h3>{t("detail.onchain")}</h3>
+              <div className="row"><span className="pill">{t("detail.agreement")}</span><div className="row-main"><span className="hash-tag">{esc(wizard.onchain.agreement_onchain_id)}</span></div></div>
               <div className="row"><span className="pill">tx</span><div className="row-main"><span className="hash-tag">{esc(wizard.onchain.tx_hash)}</span></div></div>
               <div className="row">
-                <span className="pill pill-ok">party A {wizard.onchain.signed_a ? "signed" : "pending"}</span>
-                <span className="pill pill-ok">party B {wizard.onchain.signed_b ? "signed" : "pending"}</span>
-                <span className={wizard.onchain.executed ? "pill pill-ok" : "pill pill-warn"}>{wizard.onchain.executed ? "executed" : "not executed"}</span>
+                <span className="pill pill-ok">{t("detail.partyA")} {wizard.onchain.signed_a ? t("common.signed") : t("detail.pending")}</span>
+                <span className="pill pill-ok">{t("detail.partyB")} {wizard.onchain.signed_b ? t("common.signed") : t("detail.pending")}</span>
+                <span className={wizard.onchain.executed ? "pill pill-ok" : "pill pill-warn"}>{wizard.onchain.executed ? t("detail.executed") : t("detail.notExecuted")}</span>
               </div>
             </div>
           )}
@@ -153,19 +203,19 @@ function longRow(
 
       {versions && (
         <div className="card" style={{ marginTop: 14 }}>
-          <h3>Version history (append-only)</h3>
+          <h3>{t("detail.versionHistory")}</h3>
           {versions.map((v) => (
             <div className="row" key={v.version_id}>
               <span className="hash-tag">{v.version_id}</span>
-              <span className={"pill " + (v.status === "in_force" ? "pill-ok" : v.status === "proposed" ? "pill-warn" : "pill-accent")}>{v.status}</span>
+              <span className={"pill " + (v.status === "in_force" ? "pill-ok" : v.status === "proposed" ? "pill-warn" : "pill-accent")}>{statusLabel(v.status)}</span>
               <div className="row-main">
-                <div className="row-title">{v.doc_type}</div>
+                <div className="row-title">{docTypeLabel(v.doc_type)}</div>
                 <div className="row-sub">
-                  parent {esc(v.parent_version_id || "—")} · from {v.effective_from ? fmtDate(v.effective_from) : "proposal"}
-                  {v.effective_to ? ` · to ${fmtDate(v.effective_to)}` : ""}
+                  {t("detail.parent")} {esc(v.parent_version_id || "—")} · {t("detail.from")} {v.effective_from ? fmtDate(v.effective_from) : t("detail.proposal")}
+                  {v.effective_to ? <> · {t("detail.to")} {fmtDate(v.effective_to)}</> : ""}
                 </div>
               </div>
-              {v.anchor_tx ? <span className="pill pill-ok">anchored</span> : <span className="pill pill-warn">draft</span>}
+              {v.anchor_tx ? <span className="pill pill-ok">{t("common.anchored")}</span> : <span className="pill pill-warn">{t("common.draft")}</span>}
             </div>
           ))}
         </div>
@@ -173,8 +223,8 @@ function longRow(
 
       {obligations && (
         <div className="card" style={{ marginTop: 12 }}>
-          <h3>Obligations ({obligations.length})</h3>
-          {obligations.length === 0 && <p className="muted">No obligations extracted.</p>}
+          <h3>{t("detail.obligations", { count: obligations.length })}</h3>
+          {obligations.length === 0 && <p className="muted">{t("detail.noObligations")}</p>}
           {obligations.map((o) => (
             <div className="row" key={o.obligation_id}>
               <span className="pill pill-accent">{esc(o.obligor)}</span>
@@ -182,32 +232,31 @@ function longRow(
                 <div className="row-title">{esc(o.action)}</div>
                 <div className="row-sub">
                   → {esc(o.obligee)} · {esc(o.trigger)}
-                  {o.due_date ? ` · due ${fmtDate(o.due_date)}` : ""}
+                  {o.due_date ? <> · {t("dashboard.until")} {fmtDate(o.due_date)}</> : ""}
                 </div>
               </div>
-              <span className={"pill " + (o.state === "pending" ? "pill-warn" : o.state === "performed" ? "pill-ok" : "pill-accent")}>{esc(o.state)}</span>
+              <span className={"pill " + (o.state === "pending" ? "pill-warn" : o.state === "performed" ? "pill-ok" : "pill-accent")}>{stateLabel(o.state)}</span>
             </div>
           ))}
           <p className="muted" style={{ fontSize: 12 }}>
-            Obligation confirmations are recorded here with timestamps and anchored when
-            confirmed — see the thread. Silence is a recorded fact, not an accusation.
+            {t("detail.obligationsNote")}
           </p>
         </div>
       )}
 
       {history && (
         <div className="card" style={{ marginTop: 12 }}>
-          <h3>Chain log</h3>
+          <h3>{t("detail.chainLog")}</h3>
           {history.length === 0 ? (
-            <p className="muted">Nothing anchored yet.</p>
+            <p className="muted">{t("detail.nothingAnchored")}</p>
           ) : (
             history.map((e, i) => (
               <div className="row" key={i}>
-                <span className="pill">{esc(e.detail?.doc_type || e.detail?.event_type)}</span>
+                <span className="pill">{docTypeLabel(e.detail?.doc_type) || (EVENT_LABELS[e.detail?.event_type] ? t(EVENT_LABELS[e.detail.event_type]) : e.detail?.event_type)}</span>
                 <div className="row-main">
                   <div className="row-title mono" style={{ fontSize: 12.5 }}>{esc(String(e.tx_hash).slice(0, 22))}…</div>
                   <div className="row-sub">
-                    doc {esc(e.detail?.doc_id || "—")} · parent {esc(e.detail?.parent_doc_id || "—")}
+                    {t("detail.doc")} {esc(e.detail?.doc_id || "—")} · {t("detail.parent")} {esc(e.detail?.parent_doc_id || "—")}
                   </div>
                 </div>
                 <span className="muted" style={{ fontSize: 12 }}>{fmtTime(e.detail?.timestamp || null)}</span>
@@ -218,26 +267,23 @@ function longRow(
       )}
 
       <div className="card" style={{ marginTop: 12 }}>
-        <h3>Invite the other party</h3>
+        <h3>{t("detail.inviteTitle")}</h3>
         <p className="muted" style={{ marginTop: 0, fontSize: 13, marginBottom: 12 }}>
-          They join through a scoped link that expires.
-          {row.signed
-            ? " The contract is signed — acceptance opens the thread immediately."
-            : " The thread opens once the agreement is signed."}
+          {t("detail.inviteBody")}
         </p>
         <InvitePanel contractId={contractId} />
       </div>
 
       <div style={{ display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
-        {row.signed ? (
+        {row.signed || row.source === "hardened" ? (
           <Link className="btn btn-primary" href={`/thread?contract_id=${encodeURIComponent(contractId)}`}>
-            Open the thread →
+            {t("detail.openThread")} <span className="rtl-flip">→</span>
           </Link>
         ) : (
-          <span className="pill pill-warn">no thread until the agreement is signed</span>
+          <span className="pill pill-warn">{t("detail.noThreadYet")}</span>
         )}
         {row.source === "hardened" && (
-          <Link className="btn" href={`/harden`}>Analyse another contract</Link>
+          <Link className="btn" href={`/harden`}>{t("detail.analyseAnother")}</Link>
         )}
       </div>
     </>

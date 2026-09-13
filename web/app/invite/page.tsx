@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api, esc, getMe } from "@/lib/api";
+import { useI18n } from "@/lib/i18n";
 import TopBar, { InsafMark } from "@/components/TopBar";
 
 interface InviteInfo {
@@ -24,6 +25,7 @@ function InviteInner() {
   const router = useRouter();
   const params = useSearchParams();
   const token = params.get("token") || "";
+  const { t } = useI18n();
 
   const [info, setInfo] = useState<InviteInfo | null>(null);
   const [error, setError] = useState("");
@@ -42,7 +44,7 @@ function InviteInner() {
       }
       const { ok, body } = await api<InviteInfo | { error?: string }>("/api/invites/" + encodeURIComponent(token));
       if (!ok) {
-        setError(String((body as { error?: string }).error || "invitation not found"));
+        setError(String((body as { error?: string }).error || t("invite.notFound")));
         return;
       }
       const i = body as InviteInfo;
@@ -54,11 +56,11 @@ function InviteInner() {
         router.replace(threadUrl(i.contract_id, token));
       }
     })();
-  }, [token, router, waiting]);
+  }, [token, router, waiting, t]);
 
   async function accept() {
     if (info?.need_accept && code.trim().length !== 6) {
-      setError("Enter the 6-digit confirmation code from the other party.");
+      setError(t("invite.codeError"));
       return;
     }
     setBusy(true);
@@ -68,7 +70,7 @@ function InviteInner() {
       { method: "POST", body: JSON.stringify({ otp_code: code.trim() }) }
     );
     if (!ok || !body.ok) {
-      setError(String(body.error || "acceptance failed"));
+      setError(String(body.error || t("err.acceptFailed")));
       setBusy(false);
       return;
     }
@@ -84,8 +86,8 @@ function InviteInner() {
     return (
       <main className="main main-narrow">
         <div className="card">
-          <h3>Open your invitation</h3>
-          <p className="muted">The invitation link from the other party contains a token. Paste the full link here.</p>
+          <h3>{t("invite.openTitle")}</h3>
+          <p className="muted">{t("invite.paste")}</p>
           <input
             className="input"
             placeholder="invite?token=…"
@@ -105,9 +107,9 @@ function InviteInner() {
     return (
       <main className="main main-narrow">
         <div className="banner banner-danger">
-          <strong>Invitation inaccessible.</strong> {esc(error)}
+          <strong>{t("invite.inaccessible")}</strong> {esc(error)}
         </div>
-        <a className="btn" href="/">Back to Insaf</a>
+        <a className="btn" href="/">{t("invite.backInsaf")}</a>
       </main>
     );
   }
@@ -115,7 +117,7 @@ function InviteInner() {
   if (!info) {
     return (
       <main className="main main-narrow">
-        <p className="muted">Loading invitation…</p>
+        <p className="muted">{t("invite.loading")}</p>
       </main>
     );
   }
@@ -125,13 +127,12 @@ function InviteInner() {
       <main className="main main-narrow">
         <div className="card" style={{ textAlign: "center", padding: 40 }}>
           <InsafMark size={40} />
-          <h2>You're confirmed.</h2>
+          <h2>{t("invite.confirmedTitle")}</h2>
           <p className="muted">
-            Your acceptance has been recorded. The secure thread opens once the
-            owner has signed the agreement — you'll be notified here.
+            {t("invite.confirmedBody")}
           </p>
-          <p className="muted">Keep this link: returning with it signs you straight into the thread.</p>
-          <button className="btn" onClick={() => window.location.reload()}>Check again</button>
+          <p className="muted">{t("invite.keepLink")}</p>
+          <button className="btn" onClick={() => window.location.reload()}>{t("invite.checkAgain")}</button>
         </div>
       </main>
     );
@@ -142,25 +143,25 @@ function InviteInner() {
       <TopBar />
       <main className="main main-narrow">
         <div className="card">
-          <h1 style={{ fontSize: 22, marginTop: 0 }}>You've been invited</h1>
+          <h1 style={{ fontSize: 22, marginTop: 0 }}>{t("invite.beenInvited")}</h1>
           <p className="muted">
-            <strong>{esc(info.contract?.parties.owner || "An MSME owner")}</strong> wants you to
-            join a contract on Insaf. Join to see the same signed record and talk
-            in a neutral, tamper-proof thread before anything reaches a court.
+            {t("invite.beenInvitedBody", { owner: esc(info.contract?.parties.owner || t("dashboard.msme")) })}
           </p>
 
           {info.contract && (
             <div className="banner banner-info">
               <strong>{esc(info.contract.parties.owner)} → {esc(info.contract.parties.counterparty)}</strong>
-              <span className="pill pill-accent" style={{ marginLeft: 8 }}>{info.source}</span>
-              <span className="hash-tag" style={{ marginLeft: 8 }}>{info.contract_id}</span>
+              <span className="pill pill-accent" style={{ marginInlineStart: 8 }}>
+                {info.source === "wizard" ? t("common.wizard") : t("common.hardened")}
+              </span>
+              <span className="hash-tag" style={{ marginInlineStart: 8 }}>{info.contract_id}</span>
             </div>
           )}
 
           {info.contract?.contract_text && (
             <div style={{ margin: "12px 0" }}>
               <details>
-                <summary className="muted" style={{ cursor: "pointer" }}>Preview the contract</summary>
+                <summary className="muted" style={{ cursor: "pointer" }}>{t("invite.preview")}</summary>
                 <pre style={{ whiteSpace: "pre-wrap", fontSize: 12.5, background: "var(--surface-alt)", padding: 12, borderRadius: 10, marginTop: 8 }}>{info.contract.contract_text}</pre>
               </details>
             </div>
@@ -169,13 +170,13 @@ function InviteInner() {
           {info.need_accept && (
             <div style={{ margin: "14px 0" }}>
               <label className="muted" style={{ fontSize: 13, display: "block", marginBottom: 6 }}>
-                Confirmation code
+                {t("invite.code")}
               </label>
               <input
                 className="input"
                 inputMode="numeric"
                 maxLength={6}
-                placeholder="6 digits from the other party"
+                placeholder={t("invite.codePlaceholder")}
                 value={code}
                 onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
                 onKeyDown={(e) => {
@@ -189,13 +190,11 @@ function InviteInner() {
           {error && <div className="banner banner-danger">{error}</div>}
 
           <button className="btn btn-primary btn-block" onClick={accept} disabled={busy}>
-            {busy ? "Recording…" : info.need_accept ? "Accept and open the thread" : "Return to the thread"}
+            {busy ? t("invite.recording") : info.need_accept ? t("invite.accept") : t("invite.return")}
           </button>
 
           <p className="muted" style={{ fontSize: 12, marginBottom: 0 }}>
-            Accepting is a human act on your side. Nothing is signed for you —
-            this records that you received the contract and agreed to discuss
-            it in this thread.
+            {t("invite.humanNote")}
           </p>
         </div>
       </main>
@@ -203,9 +202,14 @@ function InviteInner() {
   );
 }
 
+function InviteLoader() {
+  const { t } = useI18n();
+  return <div className="main main-narrow"><p className="muted">{t("common.loading")}</p></div>;
+}
+
 export default function InvitePage() {
   return (
-    <Suspense fallback={<div className="main main-narrow"><p className="muted">Loading…</p></div>}>
+    <Suspense fallback={<InviteLoader />}>
       <InviteInner />
     </Suspense>
   );

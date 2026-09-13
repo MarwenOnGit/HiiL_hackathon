@@ -3,6 +3,7 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api, esc, fmtTime, getMe, markSeen, type Me } from "@/lib/api";
+import { useI18n } from "@/lib/i18n";
 import TopBar from "@/components/TopBar";
 import InvitePanel from "@/components/InvitePanel";
 
@@ -19,6 +20,7 @@ function ThreadInner() {
   const contractId = params.get("contract_id") || "";
   const token = params.get("token") || "";
   const scrollRef = useRef<HTMLDivElement>(null);
+  const { t } = useI18n();
 
   const [me, setMe] = useState<Me | null>(null);
   const [role, setRole] = useState<"owner" | "counterparty" | null>(null);
@@ -71,7 +73,7 @@ function ThreadInner() {
       { method: "POST", body: JSON.stringify({ sender: role, body: draft, ...(token ? { token } : {}) }) }
     );
     if (!ok) {
-      setGate(String(body.error || "could not post"));
+      setGate(String(body.error || t("err.couldNotPost")));
       setBusy(false);
       return;
     }
@@ -88,7 +90,7 @@ function ThreadInner() {
       { method: "POST", body: JSON.stringify({ question: spell, ...(token ? { token } : {}) }) }
     );
     if (!ok) {
-      setGate(String(body.error || "the assistant is unreachable"));
+      setGate(String(body.error || t("err.assistantUnreachable")));
       setBusy(false);
       return;
     }
@@ -100,35 +102,34 @@ function ThreadInner() {
   const isParticipant = Boolean(role);
   const labels: Record<string, string> = participants
     ? { owner: participants.owner, counterparty: participants.counterparty }
-    : { owner: "MSME", counterparty: "Counterparty" };
+    : { owner: t("dashboard.msme"), counterparty: t("dashboard.counterparty") };
 
   return (
     <div className="app">
       <TopBar />
       <main className="main">
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          <h1 style={{ fontSize: 22, margin: 0 }}>Thread</h1>
+          <h1 style={{ fontSize: 22, margin: 0 }}>{t("thread.title")}</h1>
           <span className="hash-tag">{contractId}</span>
-          {role === "owner" && <span className="pill pill-accent">you're the owner</span>}
-          {role === "counterparty" && <span className="pill pill-ok">you're the invited party</span>}
+          {role === "owner" && <span className="pill pill-accent">{t("thread.owner")}</span>}
+          {role === "counterparty" && <span className="pill pill-ok">{t("thread.invited")}</span>}
         </div>
 
         {gate && (
           <div className="card" style={{ marginTop: 14 }}>
             <div className="banner banner-warn">
-              <strong>This thread isn't open for you yet.</strong> {esc(gate)}
+              <strong>{t("thread.gateTitle")}</strong> {esc(gate)}
             </div>
             <p className="muted">
-              The thread opens once the agreement is signed by both parties. As
-              the owner you can invite the counterparty from here.
+              {t("thread.gateBody")}
             </p>
             {role === "owner" || (me && me.authenticated && me.kind === "msme") ? (
               <InvitePanel contractId={contractId} />
             ) : (
-              <a className="btn" href="/">Back</a>
+              <a className="btn" href="/">{t("thread.back")}</a>
             )}
             {gate && !gate.includes("open") && gate !== "not a participant in this thread" && (
-              <button className="btn" onClick={() => { setGate(""); load(); }}>Retry</button>
+              <button className="btn" onClick={() => { setGate(""); load(); }}>{t("thread.retry")}</button>
             )}
           </div>
         )}
@@ -136,17 +137,15 @@ function ThreadInner() {
         {!gate && (
           <div className="card" style={{ marginTop: 14 }}>
             <p className="muted" style={{ marginTop: 0, fontSize: 13 }}>
-              Neutral ground: both parties see this same record. Obligation and
-              settlement confirmations made here are timestamped and anchored —
-              silence is a recorded fact, not an accusation.
+              {t("thread.neutral")}
             </p>
 
             <div className="thread-scroll" ref={scrollRef}>
               {messages === null ? (
-                <p className="thread-empty">Loading…</p>
+                <p className="thread-empty">{t("common.loading")}</p>
               ) : messages.length === 0 ? (
                 <p className="thread-empty">
-                  No messages yet. {isParticipant ? "Say hello, then agree on what happens next." : ""}
+                  {t("thread.noMsgs")}{isParticipant ? t("thread.sayHello") : ""}
                 </p>
               ) : (
                 messages.map((m, i) => {
@@ -156,11 +155,11 @@ function ThreadInner() {
                       <div className="msg-meta">
                         {m.sender === "insaf" ? (
                           <>
-                            Insaf · {m.reply_meta?.summoned_by} asked
-                            {m.reply_meta && <span className="pill" style={{ marginLeft: 8 }}>{m.reply_meta.rule_based ? "rule-based" : "analysed"}</span>}
+                            Insaf · {t("thread.summoned", { name: m.reply_meta?.summoned_by ?? "" })}
+                            {m.reply_meta && <span className="pill" style={{ marginInlineStart: 8 }}>{m.reply_meta.rule_based ? t("thread.ruleBased") : t("thread.analysed")}</span>}
                             {m.reply_meta && (
-                              <span className={"pill " + (m.reply_meta.grounded ? "pill-ok" : "pill-warn")} style={{ marginLeft: 6 }}>
-                                {m.reply_meta.grounded ? "grounded" : "no legal basis found"}
+                              <span className={"pill " + (m.reply_meta.grounded ? "pill-ok" : "pill-warn")} style={{ marginInlineStart: 6 }}>
+                                {m.reply_meta.grounded ? t("thread.grounded") : t("thread.noBasis")}
                               </span>
                             )}
                           </>
@@ -177,7 +176,7 @@ function ThreadInner() {
               )}
             </div>
 
-            {busy && <p className="muted" style={{ fontSize: 12, margin: "6px 0 0" }}>Working…</p>}
+            {busy && <p className="muted" style={{ fontSize: 12, margin: "6px 0 0" }}>{t("common.working")}</p>}
 
             {isParticipant && (
               <>
@@ -187,20 +186,18 @@ function ThreadInner() {
                     value={draft}
                     onChange={(e) => setDraft(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && send()}
-                    placeholder={`Message as ${labels[role as string] || role}…`}
+                    placeholder={t("thread.as", { name: labels[role ?? "owner"] || "…" })}
                     disabled={busy}
                   />
                   <button className="btn btn-primary" onClick={send} disabled={busy || !draft.trim()}>
-                    Send
+                    {t("thread.send")}
                   </button>
                 </div>
 
                 <div className="assistant-panel">
-                  <strong style={{ fontSize: 13 }}>Call Insaf into the conversation</strong>
+                  <strong style={{ fontSize: 13 }}>{t("thread.assistantTitle")}</strong>
                   <p className="muted" style={{ margin: "4px 0 8px", fontSize: 12.5 }}>
-                    Ask about obligations, versions or this dispute. The answer is
-                    posted <em>into the thread</em> so both parties read the same
-                    neutral reply — grounded only in retrieved law, never invented.
+                    {t("thread.assistantBody")}
                   </p>
                   <div className="compose" style={{ marginTop: 0 }}>
                     <input
@@ -208,11 +205,11 @@ function ThreadInner() {
                       value={spell}
                       onChange={(e) => setSpell(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && summon()}
-                      placeholder="e.g. Which obligations are overdue? / Quelle version s'applique en juin ?"
+                      placeholder={t("thread.askPlaceholder")}
                       disabled={busy}
                     />
                     <button className="btn btn-warm" onClick={summon} disabled={busy || !spell.trim()}>
-                      Ask Insaf
+                      {t("thread.ask")}
                     </button>
                   </div>
                 </div>
@@ -225,9 +222,14 @@ function ThreadInner() {
   );
 }
 
+function ThreadLoader() {
+  const { t } = useI18n();
+  return <div className="main"><p className="muted">{t("common.loading")}</p></div>;
+}
+
 export default function ThreadPage() {
   return (
-    <Suspense fallback={<div className="main"><p className="muted">Loading…</p></div>}>
+    <Suspense fallback={<ThreadLoader />}>
       <ThreadInner />
     </Suspense>
   );

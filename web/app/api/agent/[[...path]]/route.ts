@@ -58,13 +58,17 @@ function forwardTarget(method: string, path: string[]): string | null {
     return null;
   }
   if (rest.length === 1) {
-    if (method === "POST" && m === "contracts") return `/contracts/${rest[0]}/accept`;
+    if (method === "POST" && m === "contracts") {
+      if (rest[0] === "build") return "/contracts/build";
+      return `/contracts/${rest[0]}/accept`;
+    }
     if (method === "GET" && m === "contracts") return `/contracts/${rest[0]}`;
     return null;
   }
   if (m === "contracts" && rest[1] === "history") return `/contracts/${rest[0]}/history`;
   if (m === "contracts" && rest[1] === "verify") return `/contracts/${rest[0]}/verify`;
   if (m === "contracts" && rest[1] === "sign" && method === "POST") return `/contracts/${rest[0]}/sign`;
+  if (m === "contracts" && rest[1] === "accept" && method === "POST") return `/contracts/${rest[0]}/accept`;
   return null;
 }
 
@@ -146,6 +150,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ pat
       body: JSON.stringify(body),
       headers: { "Content-Type": "application/json" }
     });
+    // A build creates a contract in the agent store owned by whoever built it,
+    // exactly like the /harden upload path does further up.
+    if (ok && path[0] === "contracts" && path[1] === "build") {
+      const auth = authFromRequest(req);
+      if (auth && auth.kind === "msme" && agentBody?.report?.contract_id) {
+        db.saveContractOwner(agentBody.report.contract_id, auth.user.user_id, "hardened");
+        registry.clearAgentListCache();
+      }
+    }
     return NextResponse.json(agentBody, { status: ok ? 200 : bodyStatus });
   } catch (err: any) {
     return unavailable(err);

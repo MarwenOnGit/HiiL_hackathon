@@ -23,8 +23,8 @@ class StrEnum(str, Enum):
 class DocType(StrEnum):
     """What a version *is* in the contract's life."""
 
-    ORIGINAL = "original"    # what the user uploaded, before any analysis
-    HARDENED = "hardened"    # our proposed redlines — a proposal, never anchored
+    ORIGINAL = "original"    # what the user brought, before any analysis
+    HARDENED = "hardened"    # a human-edited next version — the AI never produces it
     SIGNED = "signed"        # accepted by both parties
     AMENDMENT = "amendment"  # a later change, itself signed
 

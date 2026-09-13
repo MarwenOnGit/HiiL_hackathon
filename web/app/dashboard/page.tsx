@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { api, esc, fmtTime, unreadCount } from "@/lib/api";
+import { useI18n } from "@/lib/i18n";
 import TopBar from "@/components/TopBar";
 import InvitePanel from "@/components/InvitePanel";
 
@@ -30,6 +31,7 @@ interface Mine {
 
 export default function DashboardPage() {
   const router = useRouter();
+  const { t } = useI18n();
   const [rows, setRows] = useState<Row[] | null>(null);
   const [chainMode, setChainMode] = useState("");
   const [unread, setUnread] = useState<Record<string, number>>({});
@@ -48,7 +50,7 @@ export default function DashboardPage() {
         router.replace("/");
         return;
       }
-      setError(String((body as { error?: string }).error || "could not load your contracts"));
+      setError(String((body as { error?: string }).error || t("dashboard.errLoad")));
       setRows([] as Row[]);
       return;
     }
@@ -64,7 +66,7 @@ export default function DashboardPage() {
       })
     );
     setUnread(counts);
-  }, [router]);
+  }, [router, t]);
 
   async function generateDemo() {
     setError("");
@@ -75,7 +77,7 @@ export default function DashboardPage() {
         { method: "POST" }
       );
       if (!rel.ok || !rel.body.relationship?.relationship_id)
-        throw new Error(String(rel.body.error || "demo failed"));
+        throw new Error(String(rel.body.error || t("err.demoFailed")));
       const gen = await api<{ contract?: { contract_id?: string }; error?: string }>(
         "/api/contracts/generate",
         {
@@ -84,7 +86,7 @@ export default function DashboardPage() {
         }
       );
       if (!gen.ok || !gen.body.contract?.contract_id)
-        throw new Error(String(gen.body.error || "generation failed"));
+        throw new Error(String(gen.body.error || t("err.genFailed")));
       const id = gen.body.contract.contract_id;
       const created = await api<{ invite?: { invite_url: string }; contract_id?: string }>(
         `/api/invites/${encodeURIComponent(id)}`,
@@ -96,7 +98,7 @@ export default function DashboardPage() {
         router.push(`/contracts/${encodeURIComponent(id)}`);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "generation failed");
+      setError(err instanceof Error ? err.message : t("err.genFailed"));
       setAdding(false);
     }
   }
@@ -109,54 +111,50 @@ export default function DashboardPage() {
       <TopBar />
       <main className="main">
         <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-          <h1 style={{ fontSize: 24, margin: "0 0 4px" }}>Dashboard</h1>
-          <span className="pill">chain: {chainMode || "…"}</span>
+          <h1 style={{ fontSize: 24, margin: "0 0 4px" }}>{t("dashboard.title")}</h1>
+          <span className="pill">{t("dashboard.chain")} {chainMode || "…"}</span>
         </div>
         <p className="muted" style={{ marginTop: 4 }}>
-          From one place: harden a contract, invite the other party, keep the
-          signed record, track obligations and settle disputes before court.
+          {t("dashboard.intro")}
         </p>
 
         <div className="grid-stats" style={{ marginTop: 14 }}>
           <div className="stat">
             <div className="stat-num">{rows ? rows.length : "–"}</div>
-            <div className="stat-label">Contracts you own</div>
+            <div className="stat-label">{t("dashboard.statContracts")}</div>
           </div>
           <div className="stat">
             <div className="stat-num">{totalSigned}</div>
-            <div className="stat-label">Signed / executed</div>
+            <div className="stat-label">{t("dashboard.statSigned")}</div>
           </div>
           <div className="stat">
             <div className="stat-num">{totalMsgs}</div>
-            <div className="stat-label">Thread messages</div>
+            <div className="stat-label">{t("dashboard.statThreads")}</div>
           </div>
         </div>
 
         <div style={{ display: "flex", gap: 10, marginTop: 18, flexWrap: "wrap" }}>
           <Link href="/harden" className="btn btn-primary">
-            Analyse a contract (harden it)
+            {t("dashboard.analyse")}
           </Link>
           <button className="btn btn-warm" onClick={generateDemo} disabled={adding}>
-            {adding ? "Generating demo…" : "Generate a demo relationship"}
+            {adding ? t("dashboard.generating") : t("dashboard.demoRel")}
           </button>
         </div>
 
         {error && <div className="banner banner-danger">{error}</div>}
 
         <div className="section-title">
-          <h2>Contracts</h2>
-          <span className="muted">one contract identity · many versions · append-only</span>
+          <h2>{t("dashboard.sectionTitle")}</h2>
+          <span className="muted">{t("dashboard.sectionSub")}</span>
         </div>
 
         {rows === null || rows.length === 0 ? (
           <div className="card">
             {rows === null ? (
-              <p className="muted">Loading…</p>
+              <p className="muted">{t("common.loading")}</p>
             ) : (
-              <p className="muted">
-                Nothing here yet. Generate a demo relationship above, or analyse a
-                contract you already have.
-              </p>
+              <p className="muted">{t("dashboard.empty")}</p>
             )}
           </div>
         ) : (
@@ -165,23 +163,30 @@ export default function DashboardPage() {
               <div className="row">
                 <div className="row-main">
                   <div className="row-title">
-                    {esc(r.msme_owner || "MSME")} → {esc(r.counterparty || "Counterparty")}
-                    <span className="pill pill-accent" style={{ marginLeft: 8 }}>
-                      {r.source}
+                    {esc(r.msme_owner || t("dashboard.msme"))} → {esc(r.counterparty || t("dashboard.counterparty"))}
+                    <span className="pill pill-accent" style={{ marginInlineStart: 8 }}>
+                      {r.source === "wizard" ? t("common.wizard") : t("common.hardened")}
                     </span>
-                    {r.signed && <span className="pill pill-ok" style={{ marginLeft: 6 }}>signed</span>}
-                    {!r.signed && <span className="pill pill-warn" style={{ marginLeft: 6 }}>draft</span>}
+                    {r.source === "hardened" ? (
+                      <span className="pill pill-ok" style={{ marginInlineStart: 6 }}>{t("common.anchored")}</span>
+                    ) : r.signed ? (
+                      <span className="pill pill-ok" style={{ marginInlineStart: 6 }}>{t("common.signed")}</span>
+                    ) : (
+                      <span className="pill pill-warn" style={{ marginInlineStart: 6 }}>{t("common.draft")}</span>
+                    )}
                   </div>
                   <div className="row-sub">
                     <span className="hash-tag">{r.contract_id}</span>
-                    {r.version_count > 0 && <> · {r.version_count} version{r.version_count > 1 ? "s" : ""}</>}
-                    {r.consent_tier && <> · tier {esc(r.consent_tier)}</>}
+                    {r.version_count > 0 && (
+                      <> · {r.version_count} {r.version_count > 1 ? t("dashboard.versionsMany") : t("dashboard.versions")}</>
+                    )}
+                    {r.consent_tier && <> · {t("dashboard.tier")} {esc(r.consent_tier)}</>}
                     {r.generated_at && <> · {fmtTime(r.generated_at)}</>}
                     {r.invite_active && (
                       <>
                         {" · "}
-                        invite open
-                        {r.invite_expires_at && <> until {fmtTime(r.invite_expires_at)}</>}
+                        {t("dashboard.inviteOpen")}
+                        {r.invite_expires_at && <> {t("dashboard.until")} {fmtTime(r.invite_expires_at)}</>}
                       </>
                     )}
                   </div>
@@ -189,22 +194,22 @@ export default function DashboardPage() {
 
                 <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                   <Link href={`/contracts/${encodeURIComponent(r.contract_id)}`} className="btn btn-sm">
-                    Details
+                    {t("dashboard.details")}
                   </Link>
-                  {r.signed ? (
+                  {r.signed || r.source === "hardened" ? (
                     <Link href={`/thread?contract_id=${encodeURIComponent(r.contract_id)}`} className="btn btn-sm btn-primary">
-                      Thread
+                      {t("dashboard.thread")}
                       {unread[r.contract_id] > 0 && (
-                        <span className="badge-unread" style={{ marginLeft: 6 }}>
+                        <span className="badge-unread" style={{ marginInlineStart: 6 }}>
                           {unread[r.contract_id]}
                         </span>
                       )}
                     </Link>
                   ) : (
-                    <span className="pill pill-warn">no thread until signed</span>
+                    <span className="pill pill-warn">{t("dashboard.noThread")}</span>
                   )}
                   <button className="btn btn-sm" onClick={() => setOpenInvite(openInvite === r.contract_id ? null : r.contract_id)}>
-                    {openInvite === r.contract_id ? "Close invite" : "Invite"}
+                    {openInvite === r.contract_id ? t("dashboard.closeInvite") : t("dashboard.invite")}
                   </button>
                 </div>
               </div>

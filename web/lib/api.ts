@@ -1,6 +1,8 @@
 // Minimal typed client for the app's own /api/* routes. Everything is same
 // origin (:3000), so the session cookie stays same-origin too.
 
+import { readLang } from "@/lib/i18n";
+
 export type Me =
   | { authenticated: false }
   | {
@@ -29,6 +31,9 @@ export async function api<T = Record<string, unknown>>(
     ...(options.body && !(options.body instanceof FormData)
       ? { "Content-Type": "application/json" }
       : {}),
+    // The running interface language, forwarded so the agent and server
+    // surfaces can render their own copy in the same language (invariant 8).
+    "x-insaf-lang": readLang(),
     ...((options.headers as Record<string, string>) || {})
   };
   try {
@@ -56,16 +61,20 @@ export function esc(s: unknown): string {
   );
 }
 
+function dateLocale(): string {
+  return readLang() === "ar" ? "ar-TN" : "fr-FR";
+}
+
 export function fmtTime(iso: string | null | undefined): string {
   if (!iso) return "";
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString([], { dateStyle: "short", timeStyle: "short" });
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString(dateLocale(), { dateStyle: "short", timeStyle: "short" });
 }
 
 export function fmtDate(iso: string | null | undefined): string {
-  if (!iso) return "never";
+  if (!iso) return "";
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString([], { dateStyle: "medium" });
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString(dateLocale(), { dateStyle: "medium" });
 }
 
 export function unreadSinceKey(contractId: string): string {

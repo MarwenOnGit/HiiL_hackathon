@@ -158,11 +158,35 @@ class ContractVersion:
 
 
 @dataclass
+class LegalIdentity:
+    """CIVIL identity, off-chain by design (invariant 3).
+
+    CIN, matricule and address stay on the ContractObject and the encrypted
+    document store; the chain only ever sees the party pseudonym. `person_type`
+    is "physique" (CIN) or "morale" (legal form + matricule fiscale).
+    """
+
+    person_type: str              # "physique" | "morale"
+    given_name: str               # prénom — or the raison sociale for a morale
+    family_name: str              # nom — or the sigle for a morale
+    address: str = ""
+    cin: str | None = None        # personne physique
+    legal_form: str | None = None # personne morale: SARL / SUARL / SA / SNC / GIE
+    matricule: str | None = None  # personne morale: matricule fiscale
+
+    @property
+    def full_name(self) -> str:
+        parts = [p for p in (self.given_name, self.family_name) if p and p.strip()]
+        return " ".join(parts).strip()
+
+
+@dataclass
 class Party:
     party_id: str
     role: str                     # "msme_owner" | "counterparty"
     display_name: str
     pseudonym: str                # the only party value that may reach the chain
+    identity: LegalIdentity | None = None
 
 
 @dataclass
@@ -281,6 +305,17 @@ def _clause_from_dict(raw: dict[str, Any]) -> Clause:
     )
 
 
+def _party_from_dict(raw: dict[str, Any]) -> Party:
+    identity = raw.get("identity")
+    return Party(
+        party_id=raw["party_id"],
+        role=raw["role"],
+        display_name=raw["display_name"],
+        pseudonym=raw["pseudonym"],
+        identity=LegalIdentity(**identity) if identity else None,
+    )
+
+
 def _legal_ref_from_dict(raw: dict[str, Any]) -> LegalRef:
     return LegalRef(
         source_doc=raw["source_doc"],
@@ -294,7 +329,7 @@ def _legal_ref_from_dict(raw: dict[str, Any]) -> LegalRef:
 def contract_from_dict(raw: dict[str, Any]) -> ContractObject:
     return ContractObject(
         contract_id=raw["contract_id"],
-        parties=[Party(**p) for p in raw.get("parties", [])],
+        parties=[_party_from_dict(p) for p in raw.get("parties", [])],
         versions=[
             ContractVersion(
                 version_id=v["version_id"],

@@ -67,15 +67,17 @@ def main() -> int:
         "effective_from": ORIGINAL_ON.isoformat(),
     }, files={"file": ("contract_supply_defective.txt", contract_text)})
     print(f"   {len(report['clauses'])} clauses, {len(report['gaps'])} gaps, "
-          f"{report['grounding']['total_redlines']} redlines "
-          f"({report['grounding']['grounded_redlines']} grounded)")
+          f"{report['grounding']['total_recommendations']} recommendations "
+          f"({report['grounding']['grounded_recommendations']} grounded)")
 
-    print("2. accept redlines        (human gate — proposal, not anchored)")
+    print("2. acknowledge findings    (recorded; the AI applies nothing)")
     accepted = post(f"/contracts/{CONTRACT_ID}/accept",
                     json_body={"accepted_clause_ids": ["cl_0004", "cl_0006"]})
-    print(f"   {accepted['version_id']} {accepted['status']} anchored={accepted['anchored']}")
+    print(f"   acknowledged={accepted['acknowledged']} "
+          f"version_created={accepted['version_created']} "
+          f"applied={accepted['applied']}")
 
-    print("3. sign                   (takes force 2026-03-01, anchored)")
+    print("3. sign                   (takes force 2026-03-01, anchored — same text as filed)")
     signed = post(f"/contracts/{CONTRACT_ID}/sign",
                   json_body={"lawyer_validated": False,
                              "effective_from": SIGNED_ON.isoformat()})

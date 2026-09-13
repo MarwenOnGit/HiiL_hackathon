@@ -3,13 +3,16 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, getMe } from "@/lib/api";
+import { useI18n } from "@/lib/i18n";
 import { InsafMark } from "@/components/TopBar";
 import ThemeToggle from "@/components/ThemeToggle";
+import LangToggle from "@/components/LangToggle";
 
 type Mode = "login" | "register";
 
 export default function Landing() {
   const router = useRouter();
+  const { t } = useI18n();
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -35,7 +38,7 @@ export default function Landing() {
       }
     );
     if (!ok) {
-      setError(String(body.error || "could not sign in"));
+      setError(String(body.error || t("landing.errSignin")));
       setBusy(false);
       return;
     }
@@ -50,7 +53,7 @@ export default function Landing() {
       { method: "POST" }
     );
     if (!ok) {
-      setError(String(body.error || "could not start a demo session"));
+      setError(String(body.error || t("landing.errDemo")));
       setBusy(false);
       return;
     }
@@ -64,10 +67,11 @@ export default function Landing() {
           <InsafMark />
           <span className="brand-text">
             <strong>Insaf</strong>
-            <span>إنصاف · commercial justice for MSMEs</span>
+            <span>{t("topbar.tagline")}</span>
           </span>
         </span>
         <span className="top-spacer" />
+        <LangToggle />
         <ThemeToggle />
       </header>
 
@@ -75,16 +79,15 @@ export default function Landing() {
         <div className="login-card">
           <div className="card">
             <h1 style={{ marginTop: 0, fontSize: 22 }}>
-              {mode === "login" ? "Sign in to Insaf" : "Create an account"}
+              {mode === "login" ? t("landing.titleLogin") : t("landing.titleRegister")}
             </h1>
             <p className="muted" style={{ marginTop: 0 }}>
-              For MSME owners: harden a contract, invite the other party, keep a
-              tamper-proof record, and settle disputes before court.
+              {t("landing.intro")}
             </p>
 
             <div style={{ marginTop: 12 }}>
               <div className="field">
-                <label>Email</label>
+                <label>{t("landing.email")}</label>
                 <input
                   className="input"
                   type="email"
@@ -99,7 +102,7 @@ export default function Landing() {
 
               {mode === "register" && (
                 <div className="field">
-                  <label>Your name</label>
+                  <label>{t("landing.name")}</label>
                   <input
                     className="input"
                     value={name}
@@ -112,36 +115,36 @@ export default function Landing() {
               )}
 
               <div className="field">
-                <label>Password</label>
+                <label>{t("landing.password")}</label>
                 <input
                   className="input"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && submit()}
-                  placeholder={mode === "register" ? "at least 8 characters" : "••••••••"}
+                  placeholder={mode === "register" ? t("landing.pwReg") : "••••••••"}
                   autoComplete={mode === "login" ? "current-password" : "new-password"}
                   disabled={busy}
                 />
               </div>
 
               <button className="btn btn-primary btn-block" onClick={submit} disabled={busy || !email.trim() || !password}>
-                {busy ? "Working…" : mode === "login" ? "Sign in" : "Create account"}
+                {busy ? t("common.working") : mode === "login" ? t("landing.submit") : t("landing.create")}
               </button>
 
               <p style={{ fontSize: 13, margin: "10px 0 0" }}>
                 {mode === "login" ? (
                   <>
-                    No account yet?{" "}
+                    {t("landing.noAccount")}{" "}
                     <a href="#" onClick={(e) => { e.preventDefault(); setMode("register"); setError(""); }}>
-                      Register
+                      {t("landing.register")}
                     </a>
                   </>
                 ) : (
                   <>
-                    Already registered?{" "}
+                    {t("landing.hasAccount")}{" "}
                     <a href="#" onClick={(e) => { e.preventDefault(); setMode("login"); setError(""); }}>
-                      Sign in
+                      {t("landing.signin")}
                     </a>
                   </>
                 )}
@@ -151,12 +154,12 @@ export default function Landing() {
             <div style={{ margin: "16px 0", borderTop: "1px solid var(--border)" }} />
 
             <button className="btn btn-warm btn-block" disabled={busy} onClick={withDemo}>
-              Continue with the demo account
+              {t("landing.demo")}
             </button>
 
             <p style={{ margin: "12px 0 0" }}>
-              Already invited by a party?{" "}
-              <a href="/invite">Open your invitation</a>.
+              {t("landing.invited")}{" "}
+              <a href="/invite">{t("landing.openInvite")}</a>.
             </p>
 
             {error && <div className="banner banner-danger" style={{ marginTop: 10 }}>{error}</div>}

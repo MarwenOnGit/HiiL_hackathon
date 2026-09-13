@@ -47,7 +47,7 @@ html, body { padding: 0; margin: 0; }
 body {
   background: var(--bg);
   color: var(--ink);
-  font-family: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  font-family: "IBM Plex Sans", "IBM Plex Sans Arabic", system-ui, -apple-system, sans-serif;
   font-size: 14.5px;
   line-height: 1.5;
 }
@@ -71,7 +71,7 @@ h1, h2, h3 { line-height: 1.25; }
 .brand-text { display: flex; flex-direction: column; line-height: 1.2; }
 .brand-text strong { font-size: 15px; }
 .brand-text span { font-size: 11.5px; color: var(--ink-muted); }
-.top-spacer { margin-left: auto; }
+.top-spacer { margin-inline-start: auto; }
 .top-user { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--ink-muted); }
 .avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: inline-flex; align-items: center; justify-content: center; font-weight: 600; font-size: 13px; overflow: hidden; }
 .avatar img { width: 100%; height: 100%; object-fit: cover; }
@@ -107,7 +107,7 @@ h1, h2, h3 { line-height: 1.25; }
 .badge-unread { background: var(--accent); color: #fff; border-radius: 999px; padding: 1px 8px; font-size: 11px; font-weight: 700; }
 
 /* ---------- buttons ---------- */
-.btn { font: 600 13.5px "IBM Plex Sans", sans-serif; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); color: var(--ink); padding: 9px 16px; cursor: pointer; transition: filter 0.15s ease, transform 0.1s ease, background 0.15s ease; }
+.btn { font: 600 13.5px "IBM Plex Sans", "IBM Plex Sans Arabic", sans-serif; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); color: var(--ink); padding: 9px 16px; cursor: pointer; transition: filter 0.15s ease, transform 0.1s ease, background 0.15s ease; }
 .btn:hover { filter: brightness(0.98); }
 .btn:active { transform: scale(0.98); }
 .btn:disabled { opacity: 0.55; cursor: not-allowed; }
@@ -121,11 +121,11 @@ h1, h2, h3 { line-height: 1.25; }
 
 /* ---------- forms ---------- */
 .field { margin-bottom: 14px; }
-.field label { display: block; font: 600 12.5px "IBM Plex Sans", sans-serif; color: var(--ink-muted); margin-bottom: 6px; }
+.field label { display: block; font: 600 12.5px "IBM Plex Sans", "IBM Plex Sans Arabic", sans-serif; color: var(--ink-muted); margin-bottom: 6px; }
 .input, .textarea {
   width: 100%; background: var(--surface); color: var(--ink);
   border: 1px solid var(--border); border-radius: var(--radius-sm);
-  padding: 10px 12px; font: 14px "IBM Plex Sans", sans-serif;
+  padding: 10px 12px; font: 14px "IBM Plex Sans", "IBM Plex Sans Arabic", sans-serif;
 }
 .input:focus, .textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: var(--accent); }
 .textarea { min-height: 84px; resize: vertical; }
@@ -181,3 +181,10 @@ h1, h2, h3 { line-height: 1.25; }
   .main { padding: 18px 14px 50px; }
   .msg { max-width: 90%; }
 }
+
+/* ---------- RTL ---------- */
+:root[dir="rtl"] body { letter-spacing: 0; }
+[dir="rtl"] .msg { align-self: flex-end; }
+[dir="rtl"] .msg-mine { align-self: flex-start; }
+[dir="rtl"] .msg-body, [dir="rtl"] .msg-mine .msg-body { border-radius: 4px 12px 12px 12px; }
+[dir="rtl"] .rtl-flip { display: inline-block; transform: scaleX(-1); }

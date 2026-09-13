@@ -56,3 +56,7 @@ __pycache__/
 # Agent service runtime state and logs
 agent/data/
 agent-service.log
+
+# Web runtime snapshot — regenerated on every mutation
+web/lib/server/data/db-state.json
+web/lib/server/data/db-state.json.tmp

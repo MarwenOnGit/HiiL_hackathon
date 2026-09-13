@@ -21,6 +21,7 @@ owner can confirm agreement without coordinating with anyone.
 
 from __future__ import annotations
 
+import json
 import unicodedata
 
 _ROUND_CONSTANTS = [
@@ -113,3 +114,17 @@ def canonical_bytes(text: str) -> bytes:
 def content_hash(text: str) -> str:
     """0x-prefixed Keccak-256 of the canonical form. The only hash callers use."""
     return "0x" + keccak256(canonical_bytes(text)).hex()
+
+
+def json_fingerprint(value: object) -> str:
+    """Keccak-256 of a canonical JSON encoding of a structured value.
+
+    Same fingerprint family as `content_hash` — a 0x-prefixed 32-byte hex
+    string — so the chain accepts it wherever a hash is expected. Keys are
+    sorted and separators are compacted so the encoding is stable regardless
+    of insertion order or whitespace. Used to leave a verifiable marker of the
+    analysis findings on-chain (never the findings themselves): anyone can
+    re-derive this from the stored report off-chain and compare.
+    """
+    payload = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return content_hash(payload)

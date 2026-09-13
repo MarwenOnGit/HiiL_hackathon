@@ -88,13 +88,25 @@ async function agentSigned(contractId) {
   }
 }
 
+// A hardened contract is "active" as soon as the agent stored it on-chain:
+// the original is anchored automatically during analysis, so the thread and
+// invitation work without any signature.
+async function agentStored(contractId) {
+  try {
+    const data = await fetchAgentJson(`/contracts/${encodeURIComponent(contractId)}`);
+    return Boolean(data.versions && data.versions.some((v) => v.anchor_tx));
+  } catch (err) {
+    return false;
+  }
+}
+
 async function contractExecuted(contractId) {
   if (db.getContract(contractId)) {
     const record = db.getOnchainRecord(contractId);
     return Boolean(record && record.executed);
   }
   if (await hasAgentContract(contractId)) {
-    return agentSigned(contractId);
+    return agentStored(contractId);
   }
   return false;
 }
