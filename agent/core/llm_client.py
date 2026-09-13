@@ -154,6 +154,7 @@ class OpenRouterClient:
         system: str | None = None,
         max_tokens: int | None = None,
         temperature: float | None = None,
+        timeout: float | None = None,
     ) -> LLMResponse:
         import json
         import urllib.error
@@ -199,10 +200,16 @@ class OpenRouterClient:
             },
         )
 
+        # A caller that answers to an HTTP client of its own passes the budget
+        # it actually has. Observed OpenRouter latency for one narrative ranges
+        # from ~9s to ~38s for the same prompt — routing variance, not output
+        # length — so a caller with a deadline must impose it rather than hope.
+        deadline = float(timeout or self._timeout)
+
         last_error = ""
         for attempt in range(self._max_retries + 1):
             try:
-                with urllib.request.urlopen(request, timeout=self._timeout) as response:
+                with urllib.request.urlopen(request, timeout=deadline) as response:
                     body = json.loads(response.read().decode("utf-8"))
                 return self._parse(body)
             except urllib.error.HTTPError as exc:

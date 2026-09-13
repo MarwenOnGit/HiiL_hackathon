@@ -65,6 +65,10 @@ WEB_CALLS = [
     ("GET", "/contracts/{contract_id}/history"),
     ("GET", "/contracts/{contract_id}/verify"),
     ("GET", "/contracts/{contract_id}/monitor"),          # api/monitor/[contractId]
+    # Not called by web/ yet: narration is asynchronous, so a caller polls this
+    # rather than holding the analysis request open. Pinned so it cannot be
+    # dropped before the UI that will read it exists.
+    ("GET", "/contracts/{contract_id}/narrative"),
     ("POST", "/contracts/{contract_id}/obligations/{obligation_id}/confirm"),
     ("POST", "/contracts/{contract_id}/escalate"),        # api/monitor/.../escalate
     ("POST", "/admin/advance"),                           # api/monitor/.../advance

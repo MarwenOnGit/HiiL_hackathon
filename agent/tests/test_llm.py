@@ -180,14 +180,33 @@ class Degradation(unittest.TestCase):
         self.assertFalse(narrative.available)
         self.assertIn("boom", narrative.reason)
 
-    def test_settings_report_disabled_without_a_key(self):
+    def test_the_kill_switch_disables_a_configured_backend(self):
+        """AGENT_LLM_ENABLED=0 forces deterministic mode with a key present —
+        the documented way to demo without spending, and the way to rule the
+        model out when diagnosing odd output.
+
+        Deliberately not written as "unset the key and expect disabled": the
+        key legitimately lives in agent/.env, which load_llm_settings() reloads
+        on every call, so such a test passes or fails on whether a developer
+        happens to have a .env rather than on the code.
+        """
         import os
-        saved = os.environ.pop("OPENROUTER_API_KEY", None)
+        saved = os.environ.get("AGENT_LLM_ENABLED")
+        os.environ["AGENT_LLM_ENABLED"] = "0"
         try:
             self.assertFalse(load_llm_settings()["enabled"])
+            self.assertIsInstance(build_client(load_llm_settings()), NullLLMClient)
         finally:
-            if saved is not None:
-                os.environ["OPENROUTER_API_KEY"] = saved
+            if saved is None:
+                os.environ.pop("AGENT_LLM_ENABLED", None)
+            else:
+                os.environ["AGENT_LLM_ENABLED"] = saved
+
+    def test_settings_are_disabled_when_the_key_is_blank(self):
+        """The no-key path, tested on the resolved settings rather than on the
+        environment, so it holds with or without a .env on disk."""
+        self.assertFalse(build_client({"enabled": False, "api_key": "", "model": "m"})
+                         .__class__ is OpenRouterClient)
 
 
 class NarratorCannotChangeTheAudit(unittest.TestCase):
@@ -274,6 +293,88 @@ class NarratorCannotChangeTheAudit(unittest.TestCase):
         self.assertTrue(report["narrative"]["available"])
         self.assertFalse(report["narrative"]["rule_based"])
         self.assertTrue(report["narrative"]["grounding"]["ok"])
+
+
+class NarrationDoesNotBlockTheCaller(unittest.TestCase):
+    """The reason narration is asynchronous, pinned as a test.
+
+    The Next proxy gives the generic POST path — which carries
+    /contracts/build and /disputes — ten seconds. One narrative measured
+    between 9 and 38 seconds against OpenRouter for an identical prompt, the
+    variance coming from routing rather than output length. Waiting inline
+    traded a working page for a paragraph, so the analysis returns at once and
+    the prose is written onto the contract by a thread.
+    """
+
+    def test_the_placeholder_says_it_is_pending_not_unavailable(self):
+        """A caller must be able to tell "wait and poll" from "never coming"."""
+        from narration import pending
+
+        placeholder = pending()
+        self.assertTrue(placeholder["pending"])
+        self.assertFalse(placeholder["available"])
+        self.assertEqual(placeholder["text"], "")
+
+    def test_an_unavailable_narrative_is_not_marked_pending(self):
+        from narration import unavailable
+
+        self.assertNotIn("pending", unavailable("no key").as_dict())
+
+    def test_the_background_runner_delivers_its_result(self):
+        import threading
+
+        from narration import narrate_in_background
+
+        done = threading.Event()
+        captured = {}
+
+        def on_done(narrative):
+            captured["narrative"] = narrative
+            done.set()
+
+        narrate_in_background(
+            on_done,
+            client=ScriptedLLMClient(["Un résumé neutre du contrat."]),
+            agent="hardening", language="fr", data="7 clauses", citations=CITATIONS,
+        )
+        self.assertTrue(done.wait(timeout=10), "background narration never finished")
+        self.assertTrue(captured["narrative"].available)
+
+    def test_a_failing_callback_cannot_kill_the_thread_silently(self):
+        """on_done is application code; if it raises, the process must survive."""
+        import threading
+
+        from narration import narrate_in_background
+
+        reached = threading.Event()
+
+        def on_done(narrative):
+            reached.set()
+            raise RuntimeError("persistence blew up")
+
+        narrate_in_background(
+            on_done, client=ScriptedLLMClient(["texte"]),
+            agent="hardening", language="fr", data="x", citations=CITATIONS,
+        )
+        self.assertTrue(reached.wait(timeout=10))
+
+    def test_a_deadline_is_forwarded_to_the_client(self):
+        """/ask cannot be backgrounded — the prose IS the answer — so it passes
+        the budget it actually has instead of hoping."""
+        captured = {}
+
+        class Recording:
+            name = "recording"
+
+            def complete(self, prompt, *, system=None, max_tokens=None,
+                         temperature=None, timeout=None):
+                captured["timeout"] = timeout
+                from core.llm_client import LLMResponse
+                return LLMResponse(text="Réponse.", model="recording")
+
+        from narration import narrate
+        narrate(Recording(), agent="assistant", data="x", citations=CITATIONS, timeout=15)
+        self.assertEqual(captured["timeout"], 15)
 
 
 class OpenRouterRequestShape(unittest.TestCase):

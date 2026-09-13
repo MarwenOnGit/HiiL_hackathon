@@ -12,6 +12,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+import threading
+
 from fastapi import FastAPI, HTTPException, Request, UploadFile, File, Form
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
@@ -28,6 +30,7 @@ from core.version_manager import LineageError, add_version
 from hardening_agent import harden
 from hardening_agent.builder import BuildError, build_contract_text, buyer_and_supplier, essentials_meta
 from hardening_agent.ingest import get_engine
+import narration
 from monitor import (
     build_schedule,
     check_in_text,
@@ -76,6 +79,57 @@ def _append_only_conflict(_request: Request, exc: AppendOnlyViolation) -> JSONRe
 def _chain_unavailable(_request: Request, exc: ChainError) -> JSONResponse:
     # The chain is a service behind us; its failure is not the caller's fault.
     return _refusal(502, exc)
+
+
+# One writer at a time. The store is file-backed JSON, and a narration thread
+# finishing while a request saves the same contract would have them overwrite
+# each other's metadata; each write re-reads the contract first, under this lock.
+_NARRATION_LOCK = threading.Lock()
+
+NARRATIVE_KEY = "narrative"
+DISPUTE_NARRATIVE_KEY = "dispute_narrative"
+
+
+def _persist_narrative(contract_id: str, key: str, narrative) -> None:
+    """Write a finished narrative onto the contract, whatever else changed."""
+    with _NARRATION_LOCK:
+        if not RUNTIME.store.exists(contract_id):
+            return
+        contract = RUNTIME.store.get(contract_id)
+        contract.metadata[key] = narrative.as_dict()
+        RUNTIME.store.save(contract)
+
+
+def _start_narration(contract_id: str, key: str, agent: str, data: str,
+                     citations: list[dict[str, str]], language: str) -> dict[str, Any]:
+    """Kick off narration and return the placeholder for this response."""
+    if not RUNTIME.llm_enabled:
+        return narration.unavailable(
+            RUNTIME.llm_status()["reason"] or "no model backend", language
+        ).as_dict()
+    narration.narrate_in_background(
+        lambda narrative: _persist_narrative(contract_id, key, narrative),
+        client=RUNTIME.llm, agent=agent, language=language,
+        data=data, citations=citations,
+    )
+    return narration.pending()
+
+
+def _with_background_narrative(report) -> dict[str, Any]:
+    """Agent 1's report, with narration started rather than waited on.
+
+    `harden()` is deliberately called without `llm=`: that parameter narrates
+    inline, which is right for the CLI and the tests and wrong here, where the
+    caller is a browser behind a proxy that gives this endpoint ten seconds.
+    """
+    from hardening_agent.narrative import citations, digest, dominant_language
+
+    payload = report.as_dict()
+    payload["narrative"] = _start_narration(
+        report.contract.contract_id, NARRATIVE_KEY, "hardening",
+        digest(report), citations(report), dominant_language(report),
+    )
+    return payload
 
 
 def _lang(request: Request | None) -> str:
@@ -161,11 +215,10 @@ async def harden_endpoint(
             chain=RUNTIME.chain,
             store=RUNTIME.store,
             effective_from=_parse_when(effective_from),
-            llm=RUNTIME.llm,
         )
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    return report.as_dict()
+    return _with_background_narrative(report)
 
 
 class AcceptBody(BaseModel):
@@ -285,10 +338,9 @@ def build_contract(body: BuildBody) -> dict[str, Any]:
         store=RUNTIME.store,
         effective_from=_parse_when(body.effective_from),
         metadata={"essentials": essentials_meta(essentials)},
-        llm=RUNTIME.llm,
     )
     return {
-        "report": report.as_dict(),
+        "report": _with_background_narrative(report),
         "built_text": document,
         "parties": [
             {"party_id": p.party_id, "role": p.role, "display_name": p.display_name}
@@ -449,6 +501,12 @@ def get_contract(contract_id: str, request: Request) -> dict[str, Any]:
         "obligations": obligations,
         "obligation_count": len(obligations),
         "monitoring": monitoring,
+        # Written by the narration thread once it finishes. Absent means it is
+        # still running, was never started, or was discarded — `narrative`
+        # carries which.
+        "narrative": contract.metadata.get(NARRATIVE_KEY)
+        or narration.pending("no narrative recorded for this contract"),
+        "dispute_narrative": contract.metadata.get(DISPUTE_NARRATIVE_KEY),
     }
 
 
@@ -583,6 +641,31 @@ def admin_advance(body: AdvanceBody, request: Request) -> dict[str, Any]:
     return monitoring_for(contract, request)
 
 
+@app.get("/contracts/{contract_id}/narrative")
+def narrative(contract_id: str) -> dict[str, Any]:
+    """The generated prose for a contract, once the narration thread lands it.
+
+    Separate from the analysis response because the two have different clocks:
+    findings are ready in milliseconds, prose takes seconds that vary with how
+    OpenRouter routes the request. A caller polls this instead of holding the
+    analysis open.
+    """
+    if not RUNTIME.store.exists(contract_id):
+        raise HTTPException(status_code=404, detail="unknown contract")
+    contract = RUNTIME.store.get(contract_id)
+    stored = contract.metadata.get(NARRATIVE_KEY)
+    return {
+        "contract_id": contract_id,
+        "narrative": stored or narration.pending(
+            "no narrative recorded yet" if RUNTIME.llm_enabled
+            else RUNTIME.llm_status()["reason"]
+        ),
+        "dispute_narrative": contract.metadata.get(DISPUTE_NARRATIVE_KEY),
+        # So a poller knows whether waiting is worthwhile at all.
+        "backend_enabled": RUNTIME.llm_enabled,
+    }
+
+
 @app.get("/contracts/{contract_id}/history")
 def history(contract_id: str) -> dict[str, Any]:
     items = RUNTIME.chain.fetch_history(contract_id)
@@ -663,12 +746,18 @@ def open_dispute(body: DisputeBody, request: Request) -> dict[str, Any]:
             contested=body.contested,
             claim_amount=body.claim_amount,
             chain=RUNTIME.chain,
-            llm=RUNTIME.llm,
-            language=_lang(request),
         )
     except NoGoverningVersion as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
-    return report.as_dict()
+
+    from resolution_agent.narrative import digest as dispute_digest
+
+    payload = report.as_dict()
+    payload["narrative"] = _start_narration(
+        body.contract_id, DISPUTE_NARRATIVE_KEY, "resolution",
+        dispute_digest(report), [], _lang(request),
+    )
+    return payload
 
 
 @app.post("/admin/reset")
@@ -715,8 +804,12 @@ def ask_contract(body: AskBody) -> dict[str, Any]:
     if not RUNTIME.store.exists(body.contract_id):
         raise HTTPException(status_code=404, detail="unknown contract")
     contract = RUNTIME.store.get(body.contract_id)
-    reply = answer_question(contract, body.question, RUNTIME.retriever,
-                            llm=RUNTIME.llm)
+    reply = answer_question(
+        contract, body.question, RUNTIME.retriever,
+        llm=RUNTIME.llm,
+        # Bounded: this call blocks an HTTP client that is itself on a clock.
+        timeout=RUNTIME.llm_settings.get("sync_timeout_seconds", 15),
+    )
     return {
         "contract_id": body.contract_id,
         "reply": reply.as_dict(),

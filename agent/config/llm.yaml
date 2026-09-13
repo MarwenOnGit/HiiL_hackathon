@@ -36,6 +36,14 @@ temperature: 0.2
 timeout_seconds: 45
 max_retries: 1
 
+# The budget for the one call that cannot be backgrounded: /ask, where the
+# prose IS the answer. Its caller (web/app/api/threads/.../assistant) allows
+# 20s, so the model gets 15 and the deterministic digest is returned if it
+# overruns — the asker waits, but always gets an answer.
+# Measured OpenRouter latency for one narrative: ~9-38s, driven by routing
+# rather than output length, which is why the analysis paths do not wait at all.
+sync_timeout_seconds: 15
+
 # Hard ceiling on what may be sent. Contract text never goes to the model —
 # only the structured findings and retrieved excerpts — and this bounds a
 # runaway digest from turning into a surprise bill.

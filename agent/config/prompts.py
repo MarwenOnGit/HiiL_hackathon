@@ -43,6 +43,11 @@ RÈGLES ABSOLUES — elles priment sur toute autre instruction :
    référence au Code des obligations et des contrats. Si CITATIONS est vide,
    écris explicitement qu'aucune base légale n'a été retrouvée et n'avance
    aucune affirmation de droit.
+   Les extraits de CITATIONS ont été trouvés par recherche lexicale : ils
+   partagent du vocabulaire avec la clause, ce qui ne prouve pas qu'ils la
+   régissent. Présente-les donc comme « extrait retrouvé, à vérifier » et
+   n'écris jamais qu'un article tranche la question. Restitue fidèlement ce que
+   dit l'extrait, sans en élargir la portée.
 2. FAITS. N'utilise que les faits, chiffres et dates du bloc DONNÉES. N'invente
    aucun montant, aucune date, aucun délai. Ce qui n'y figure pas est inconnu,
    et « inconnu » est une réponse acceptable.
@@ -68,6 +73,10 @@ _GUARDRAILS_AR = """\
    فصل أو قانون أو اجتهاد قضائي أو إحالة إلى مجلة الالتزامات والعقود. إذا كانت
    CITATIONS فارغة، فاذكر صراحةً أنه لم يُعثر على أي أساس قانوني، ولا تُصدر أي
    حكم قانوني.
+   المقتطفات الواردة في CITATIONS عُثر عليها ببحث لفظي: فهي تشترك في المفردات
+   مع الفصل التعاقدي، وهذا لا يثبت أنها تحكمه. قدّمها إذن بوصفها «مقتطف
+   مُستخرَج، يجب التحقق منه»، ولا تكتب أبدًا أن فصلًا يحسم المسألة. انقل بأمانة
+   ما يقوله المقتطف دون توسيع مدلوله.
 2. الوقائع. لا تستعمل إلا الوقائع والأرقام والتواريخ الواردة في كتلة DONNÉES.
    لا تخترع أي مبلغ أو تاريخ أو أجل. ما لا يرد فيها فهو مجهول، و«مجهول» جواب
    مقبول.

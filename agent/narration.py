@@ -87,6 +87,7 @@ def narrate(
     citations: list[dict[str, str]] | None = None,
     question: str | None = None,
     max_tokens: int | None = None,
+    timeout: float | None = None,
 ) -> Narrative:
     """Ask `agent`'s narrator to describe `data`. Never raises.
 
@@ -106,6 +107,7 @@ def narrate(
                         question=question),
             system=system_prompt(agent, lang),
             **({"max_tokens": max_tokens} if max_tokens else {}),
+            **({"timeout": timeout} if timeout else {}),
         )
     except LLMUnavailable as exc:
         # The supported path when there is no key, no network, or a rate limit.
@@ -136,6 +138,38 @@ def narrate(
         prompt_tokens=response.prompt_tokens,
         completion_tokens=response.completion_tokens,
     )
+
+
+def narrate_in_background(on_done, **kwargs) -> None:
+    """Run `narrate` off the request thread and hand the result to `on_done`.
+
+    The analysis endpoints answer an HTTP caller with a timeout of its own —
+    10s for the Next proxy's generic POST path — while one narrative takes
+    anywhere from 9 to 38 seconds depending on how OpenRouter routes it. Making
+    the caller wait would trade a working page for a paragraph.
+
+    So the deterministic report returns immediately and the prose catches up:
+    the thread writes it onto the contract, and the next `GET /contracts/{id}`
+    serves it. A daemon thread, because a half-written narrative is never worth
+    holding shutdown open — the report it describes is already saved and
+    anchored.
+    """
+    import threading
+
+    def run() -> None:
+        try:
+            on_done(narrate(**kwargs))
+        except Exception:  # pragma: no cover - a narrator cannot break a run
+            pass
+
+    threading.Thread(target=run, daemon=True,
+                     name=f"narrate-{kwargs.get('agent', '?')}").start()
+
+
+def pending(reason: str = "narrative is being generated") -> dict[str, Any]:
+    """The placeholder an analysis response carries while the thread works."""
+    return {"available": False, "pending": True, "reason": reason,
+            "text": "", "rule_based": True}
 
 
 def citations_from_legal_refs(refs: Any) -> list[dict[str, str]]:

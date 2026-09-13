@@ -55,6 +55,19 @@ narration.py           calls the model, runs the check, degrades with a stated r
 */narrative.py         each agent's digest of its own findings
 ```
 
+**Narration is asynchronous, and that is not an optimisation.** One narrative
+measured between 9 and 38 seconds against OpenRouter for the *same* prompt —
+the variance is routing, not output length — while the Next proxy gives
+`/contracts/build` and `/disputes` ten seconds. So the analysis endpoints
+return their findings immediately with `narrative.pending: true`, a thread
+writes the prose onto the contract, and `GET /contracts/{id}/narrative` (or
+`GET /contracts/{id}`) serves it once it lands. Measured after the change:
+`/contracts/build` 0.06s, prose ~12s later.
+
+`/ask` is the exception — there the prose *is* the answer, so it runs inline
+under `sync_timeout_seconds` (15s, inside its caller's 20s) and falls back to
+the deterministic digest if the model overruns.
+
 **The model narrates; it never sources.** Everything it may say is already in
 the prompt: the structured digest and the retrieved excerpts. It does not see
 the document — only a bounded quote of the clauses that were flagged — and it

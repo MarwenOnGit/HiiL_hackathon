@@ -201,6 +201,7 @@ def answer_question(
     question: str,
     retriever: Retriever | None,
     llm=None,
+    timeout: float | None = None,
 ) -> AssistantReply:
     language = detect_language(question)
     names = _parties(contract)
@@ -251,6 +252,7 @@ def answer_question(
             data=body,
             citations=citations,
             question=question,
+            timeout=timeout,
         )
 
     if narrative is not None and narrative.available:
